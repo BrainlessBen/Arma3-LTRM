@@ -1,0 +1,64 @@
+﻿<Window x:Class="Arma_3_Sync.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Arma_3_Sync"
+        mc:Ignorable="d"
+        Title="Arma 3 Sync" Height="450" Width="800" HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Calibri">
+	<TabControl>
+		<TabItem Header="Addons" FontFamily="Calibri">
+			<Grid Background="#FFE5E5E5">
+				<TabControl Margin="0,0,397,88">
+					<TabItem Header="Available Addons">
+						<Grid Background="#FFE5E5E5"/>
+					</TabItem>
+					<TabItem Header="DLC">
+						<Grid Background="#FFE5E5E5"/>
+					</TabItem>
+				</TabControl>
+				<TabControl Margin="397,0,0,0">
+					<TabItem Header="Addon Groups">
+						<Grid Background="#FFE5E5E5"/>
+					</TabItem>
+				</TabControl>
+				<TreeView Margin="0,324,422,3"/>
+				<Button Content="Button" HorizontalAlignment="Left" Margin="372,324,0,0" VerticalAlignment="Top" Width="20" Height="20"/>
+				<Button Content="Button" HorizontalAlignment="Left" Margin="372,344,0,0" VerticalAlignment="Top" Width="20" Height="20"/>
+				<Button Content="Button" HorizontalAlignment="Left" Margin="372,364,0,0" VerticalAlignment="Top" Width="20" Height="20"/>
+				<Button Content="Button" HorizontalAlignment="Left" Margin="372,384,0,0" VerticalAlignment="Top" Width="20" Height="20"/>
+				<Button Content="Button" HorizontalAlignment="Left" Margin="774,0,0,0" VerticalAlignment="Top" Width="20" Height="20"/>
+			</Grid>
+		</TabItem>
+		<TabItem Header="Launcher options" FontFamily="Calibri">
+			<Grid Background="#FFE5E5E5">
+				<GroupBox Header="Run Parameters" Margin="260,0,0,203">
+					<ScrollViewer/>
+				</GroupBox>
+				<GroupBox Header="Additional Parameters" Margin="260,204,0,0">
+					<TextBlock HorizontalAlignment="Left" TextWrapping="Wrap" Text="TextBlock" Width="524"/>
+				</GroupBox>
+				<CheckBox Content="Profile" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Height="12" Width="125"/>
+				<ComboBox HorizontalAlignment="Left" Margin="135,10,0,0" VerticalAlignment="Top" Width="120" Height="17"/>
+				<CheckBox Content="Unit ID" HorizontalAlignment="Left" Margin="10,27,0,0" VerticalAlignment="Top" Height="12" Width="125"/>
+				<TextBox HorizontalAlignment="Left" Margin="135,27,0,0" TextWrapping="Wrap" Text="ArmaUnits ID" VerticalAlignment="Top" Width="120" Height="17"/>
+				<CheckBox Content="Windowed" HorizontalAlignment="Left" Margin="10,44,0,0" VerticalAlignment="Top" Height="12" Width="125"/>
+				<CheckBox Content="Empty World" HorizontalAlignment="Left" Margin="10,61,0,0" VerticalAlignment="Top" Height="12" Width="125" Checked="CheckBox_Checked"/>
+				<CheckBox Content="Skip Intro" HorizontalAlignment="Left" Margin="10,78,0,0" VerticalAlignment="Top" Height="12" Width="125"/>
+				<CheckBox Content="No Splash" HorizontalAlignment="Left" Margin="10,95,0,0" VerticalAlignment="Top" Height="12" Width="125"/>
+				<CheckBox Content="No Pause" HorizontalAlignment="Left" Margin="10,112,0,0" VerticalAlignment="Top" Height="12" Width="125"/>
+				<CheckBox Content="No Pause Audio" HorizontalAlignment="Left" Margin="10,129,0,0" VerticalAlignment="Top" Height="12" Width="125"/>
+				<CheckBox Content="No Logs" HorizontalAlignment="Left" Margin="10,146,0,0" VerticalAlignment="Top" Height="12" Width="125"/>
+				<CheckBox Content="Show Script Errors" HorizontalAlignment="Left" Margin="10,163,0,0" VerticalAlignment="Top" Height="12" Width="125"/>
+				<CheckBox Content="File Patching" HorizontalAlignment="Left" Margin="10,180,0,0" VerticalAlignment="Top" Height="12" Width="125"/>
+				<CheckBox Content="CheckBox" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Center" Height="12" Width="125"/>
+				<CheckBox Content="CheckBox" HorizontalAlignment="Left" Margin="10,215,0,0" VerticalAlignment="Top" Height="12" Width="125"/>
+				<CheckBox Content="CheckBox" HorizontalAlignment="Left" Margin="10,232,0,0" VerticalAlignment="Top" Height="12" Width="125"/>
+				<CheckBox Content="CheckBox" HorizontalAlignment="Left" Margin="10,249,0,0" VerticalAlignment="Top" Height="12" Width="125"/>
+			</Grid>
+		</TabItem>
+		<TabItem Header="Repositories" FontFamily="Calibri">
+			<Grid Background="#FFE5E5E5"/>
+		</TabItem>
+	</TabControl>
+</Window>
