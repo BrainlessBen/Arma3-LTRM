@@ -30,6 +30,9 @@ bld/
 # Visual Studio cache/options directory
 .vs/
 
+# Application data directories
+Settings/
+
 # Visual Studio code coverage results
 *.coverage
 *.coveragexml

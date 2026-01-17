@@ -62,7 +62,8 @@ namespace Arma_3_LTRM.Services
         {
             try
             {
-                var fileName = Path.Combine(EVENTS_FOLDER, $"{SanitizeFileName(eventItem.Name)}.json");
+                var eventsPath = Path.Combine(SETTINGS_FOLDER, EVENTS_FOLDER);
+                var fileName = Path.Combine(eventsPath, $"{SanitizeFileName(eventItem.Name)}.json");
                 if (File.Exists(fileName))
                 {
                     File.Delete(fileName);
@@ -78,13 +79,14 @@ namespace Arma_3_LTRM.Services
         {
             try
             {
-                if (!Directory.Exists(EVENTS_FOLDER))
+                var eventsPath = Path.Combine(SETTINGS_FOLDER, EVENTS_FOLDER);
+                if (!Directory.Exists(eventsPath))
                 {
-                    Directory.CreateDirectory(EVENTS_FOLDER);
+                    Directory.CreateDirectory(eventsPath);
                     return;
                 }
 
-                var eventFiles = Directory.GetFiles(EVENTS_FOLDER, "*.json");
+                var eventFiles = Directory.GetFiles(eventsPath, "*.json");
                 foreach (var file in eventFiles)
                 {
                     try
