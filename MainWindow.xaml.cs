@@ -1,13 +1,15 @@
-﻿using System.Text;
+﻿using System.IO;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+using MouseEventArgs = System.Windows.Input.MouseEventArgs;
+using DragDropEffects = System.Windows.DragDropEffects;
+using DragEventArgs = System.Windows.DragEventArgs;
+using DataFormats = System.Windows.DataFormats;
+using TreeView = System.Windows.Controls.TreeView;
+using TreeViewItem = System.Windows.Controls.TreeViewItem;
+using MessageBox = System.Windows.MessageBox;
+using Point = System.Windows.Point;
 
 namespace Arma_3_LTRM
 {
@@ -16,17 +18,18 @@ namespace Arma_3_LTRM
     /// </summary>
     public partial class MainWindow : Window
     {
-        private readonly string _ARMA3EXENAME = "arma3.exe";
+        private const string ARMA3_EXE_NAME = "arma3.exe";
+        
+        private readonly ModManager _modManager;
         private string _armaExeLocation = string.Empty;
-        //list of directorie paths to be used as mods
-        public List<string> Modlist = new List<string>();
+        private Point _dragStartPoint;
+        private bool _isDragging;
 
         public MainWindow()
         {
             InitializeComponent();
-            GetInitialArmaLocation();
-
-            PopulateAvailableAddons();
+            _modManager = new ModManager();
+            SelectArmaExecutable();
         }
 
         private void CheckBox_Checked(object sender, RoutedEventArgs e)
@@ -34,33 +37,31 @@ namespace Arma_3_LTRM
 
         }
 
-        private void GetInitialArmaLocation()
+        private void SelectArmaExecutable()
         {
             var dialog = new Microsoft.Win32.OpenFileDialog
             {
                 Title = "Select Arma 3 Executable",
                 Filter = "Arma 3 Executable|arma3.exe|All Executables|*.exe",
-                FileName = _ARMA3EXENAME
+                FileName = ARMA3_EXE_NAME
             };
 
             if (dialog.ShowDialog() == true)
             {
-                string selectedFile = dialog.FileName;
-
-                // Validate that the selected file is arma3.exe
-                if (System.IO.Path.GetFileName(selectedFile).Equals("arma3.exe", StringComparison.OrdinalIgnoreCase))
+                if (Path.GetFileName(dialog.FileName).Equals(ARMA3_EXE_NAME, StringComparison.OrdinalIgnoreCase))
                 {
-                    _armaExeLocation = selectedFile;
-
-                    if (selectedFile != null && !Modlist.Contains(selectedFile))
+                    _armaExeLocation = dialog.FileName;
+                    _modManager.Arma3ExeLocation = Path.GetDirectoryName(dialog.FileName) ?? dialog.FileName;
+                    
+                    if (_modManager.Arma3ExeLocation != null)
                     {
-                        Modlist.Add(selectedFile);
-                        Add_ModListTreeView(selectedFile);
+                        _modManager.AddMod(_modManager.Arma3ExeLocation);
+                        _modManager.RefreshModListTreeView(ModListTreeView);
                     }
                 }
                 else
                 {
-                    System.Windows.MessageBox.Show("Please select the arma3.exe file.", "Invalid File", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show("Please select the arma3.exe file.", "Invalid File", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
             }
         }
@@ -75,99 +76,58 @@ namespace Arma_3_LTRM
 
             if (dialog.ShowDialog() == true)
             {
-                string selectedFolder = dialog.FolderName;
-
-                if (!Modlist.Contains(selectedFolder))
-                {
-                    Modlist.Add(selectedFolder);
-                    Add_ModListTreeView(selectedFolder);
-                    PopulateAvailableAddons();
-                }
+                _modManager.AddMod(dialog.FolderName);
+                _modManager.RefreshModListTreeView(ModListTreeView);
+                _modManager.PopulateAvailableAddonsTreeView(AvailableAddonsTreeView);
             }
         }
 
-        private void RefreshModListTreeView()
+        private void AvailableAddonsTreeView_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            ModListTreeView.Items.Clear();
-
-            foreach (string modPath in Modlist)
-            {
-                var treeViewItem = new TreeViewItem
-                {
-                    Header = System.IO.Path.GetFileName(modPath),
-                    Tag = modPath // Store full path in Tag for later use
-                };
-                ModListTreeView.Items.Add(treeViewItem);
-            }
+            _dragStartPoint = e.GetPosition(null);
+            _isDragging = false;
         }
 
-        private void Add_ModListTreeView(string path)
+        private void AvailableAddonsTreeView_PreviewMouseMove(object sender, MouseEventArgs e)
         {
-            var treeViewItem = new TreeViewItem
+            if (e.LeftButton == MouseButtonState.Pressed && !_isDragging)
             {
-                Header = path,
-                Tag = path // Store full path in Tag for later use
-            };
-            ModListTreeView.Items.Add(treeViewItem);
+                Point currentPosition = e.GetPosition(null);
+                Vector diff = _dragStartPoint - currentPosition;
 
-        }
-
-        private void PopulateAvailableAddons()
-        {
-            AvailableAddonsTreeView.Items.Clear();
-
-            foreach (string modPath in Modlist)
-            {
-                if (System.IO.Directory.Exists(modPath))
+                if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
+                    Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
                 {
-                    var rootItem = new TreeViewItem
+                    _isDragging = true;
+                    
+                    if (sender is TreeView treeView && treeView.SelectedItem is TreeViewItem selectedItem)
                     {
-                        Header = System.IO.Path.GetFileName(modPath) ?? modPath,
-                        Tag = modPath
-                    };
-
-                    ScanForAddons(modPath, rootItem);
-
-                    if (rootItem.Items.Count > 0 || System.IO.Path.GetFileName(modPath).StartsWith('@'))
-                    {
-                        AvailableAddonsTreeView.Items.Add(rootItem);
+                        string modPath = _modManager.FindModStartDirectory(selectedItem);
+                        if (modPath != null)
+                        {
+                            DragDrop.DoDragDrop(treeView, modPath, DragDropEffects.Copy);
+                            _isDragging = false;
+                        }
                     }
                 }
             }
         }
 
-        private void ScanForAddons(string directoryPath, TreeViewItem parentItem)
+        private void StarupModsListTreeView_DragOver(object sender, DragEventArgs e)
         {
-            try
+            e.Effects = e.Data.GetDataPresent(DataFormats.StringFormat) 
+                ? DragDropEffects.Copy 
+                : DragDropEffects.None;
+            e.Handled = true;
+        }
+
+        private void StarupModsListTreeView_Drop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.StringFormat))
             {
-                var directories = System.IO.Directory.GetDirectories(directoryPath);
-
-                foreach (string dir in directories)
-                {
-                    string folderName = System.IO.Path.GetFileName(dir);
-
-                    var childItem = new TreeViewItem
-                    {
-                        Header = folderName,
-                        Tag = dir
-                    };
-
-                    parentItem.Items.Add(childItem);
-
-                    // If folder starts with '@', stop searching deeper
-                    if (!folderName.StartsWith('@'))
-                    {
-                        ScanForAddons(dir, childItem);
-                    }
-                }
-            }
-            catch (UnauthorizedAccessException)
-            {
-                // Skip directories we don't have permission to access
-            }
-            catch (System.IO.DirectoryNotFoundException)
-            {
-                // Skip directories that no longer exist
+                string modPath = (string)e.Data.GetData(DataFormats.StringFormat);
+                _modManager.AddStartupMod(modPath);
+                _modManager.RefreshStartupModsTreeView(StarupModsListTreeView);
             }
         }
     }
