@@ -1,6 +1,6 @@
 using System.ComponentModel;
 
-namespace Arma_3_LTRM
+namespace Arma_3_LTRM.Models
 {
     public class Repository : INotifyPropertyChanged
     {

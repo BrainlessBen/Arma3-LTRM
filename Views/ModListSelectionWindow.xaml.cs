@@ -1,7 +1,7 @@
 using System.Windows;
 using MessageBox = System.Windows.MessageBox;
 
-namespace Arma_3_LTRM
+namespace Arma_3_LTRM.Views
 {
     public partial class ModListSelectionWindow : Window
     {

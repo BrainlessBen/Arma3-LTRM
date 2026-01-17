@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Arma_3_LTRM
+namespace Arma_3_LTRM.Services
 {
     public class LaunchParametersManager
     {

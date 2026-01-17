@@ -3,6 +3,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Diagnostics;
+using Arma_3_LTRM.Models;
+using Arma_3_LTRM.Services;
 using MouseEventArgs = System.Windows.Input.MouseEventArgs;
 using DragDropEffects = System.Windows.DragDropEffects;
 using DragEventArgs = System.Windows.DragEventArgs;
@@ -12,11 +14,8 @@ using TreeViewItem = System.Windows.Controls.TreeViewItem;
 using MessageBox = System.Windows.MessageBox;
 using Point = System.Windows.Point;
 
-namespace Arma_3_LTRM
+namespace Arma_3_LTRM.Views
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : Window
     {
         private const string ARMA3_EXE_NAME = "arma3.exe";
@@ -109,9 +108,9 @@ namespace Arma_3_LTRM
             var enabledRepositories = _repositoryManager.GetEnabledRepositories();
             if (enabledRepositories.Any())
             {
-                if (_modManager.Modlist.Any())
+                if (_modManager.ModList.Any())
                 {
-                    var modListSelectionWindow = new ModListSelectionWindow(_modManager.Modlist)
+                    var modListSelectionWindow = new ModListSelectionWindow(_modManager.ModList)
                     {
                         Owner = this
                     };

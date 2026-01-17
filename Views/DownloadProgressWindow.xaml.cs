@@ -1,7 +1,9 @@
 using System.Windows;
 using System.Windows.Threading;
+using Arma_3_LTRM.Models;
+using Arma_3_LTRM.Services;
 
-namespace Arma_3_LTRM
+namespace Arma_3_LTRM.Views
 {
     public partial class DownloadProgressWindow : Window
     {

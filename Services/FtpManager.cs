@@ -2,9 +2,10 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Windows;
+using Arma_3_LTRM.Models;
 using MessageBox = System.Windows.MessageBox;
 
-namespace Arma_3_LTRM
+namespace Arma_3_LTRM.Services
 {
     public class FtpManager
     {
@@ -108,11 +109,9 @@ namespace Arma_3_LTRM
 
             var localFileInfo = new FileInfo(localPath);
             
-            // Check if size is different
             if (localFileInfo.Length != remoteSize)
                 return true;
 
-            // Check if remote file is newer (with 2 second tolerance for FTP timestamp precision)
             if (remoteLastModified != DateTime.MinValue && remoteLastModified > localFileInfo.LastWriteTime.AddSeconds(2))
                 return true;
 
@@ -156,7 +155,6 @@ namespace Arma_3_LTRM
                         item.Size = sizeResponse.ContentLength;
                         item.IsDirectory = false;
 
-                        // Get file timestamp
                         try
                         {
                             var timestampRequest = (FtpWebRequest)WebRequest.Create(itemUri);
@@ -248,7 +246,6 @@ namespace Arma_3_LTRM
                 item.Name = string.Join(" ", parts.Skip(8));
                 item.LastModified = DateTime.MinValue;
 
-                // Try to parse timestamp from listing (varies by FTP server)
                 try
                 {
                     if (parts.Length >= 8)
@@ -309,7 +306,6 @@ namespace Arma_3_LTRM
 
                 fileStream.Close();
 
-                // Set the local file's timestamp to match the remote file
                 if (remoteTimestamp != DateTime.MinValue)
                 {
                     File.SetLastWriteTime(destinationPath, remoteTimestamp);
@@ -363,4 +359,3 @@ namespace Arma_3_LTRM
         }
     }
 }
-

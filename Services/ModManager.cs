@@ -4,28 +4,28 @@ using TreeView = System.Windows.Controls.TreeView;
 using TreeViewItem = System.Windows.Controls.TreeViewItem;
 using CheckBox = System.Windows.Controls.CheckBox;
 
-namespace Arma_3_LTRM
+namespace Arma_3_LTRM.Services
 {
     public class ModManager
     {
-        public List<string> Modlist { get; } = new List<string>();
+        public List<string> ModList { get; } = new List<string>();
         public List<string> StartupModsList { get; } = new List<string>();
 
         public string Arma3ExeLocation { get; set; } = string.Empty;
 
         public void AddMod(string modPath)
         {
-            if (!Modlist.Contains(modPath))
+            if (!ModList.Contains(modPath))
             {
-                Modlist.Add(modPath);
+                ModList.Add(modPath);
             }
         }
 
         public void RemoveMod(string modPath)
         {
-            if (Modlist.Contains(modPath))
+            if (ModList.Contains(modPath))
             {
-                Modlist.Remove(modPath);
+                ModList.Remove(modPath);
             }
         }
 
@@ -41,7 +41,7 @@ namespace Arma_3_LTRM
         {
             treeView.Items.Clear();
 
-            foreach (string modPath in Modlist)
+            foreach (string modPath in ModList)
             {
                 if (Directory.Exists(modPath))
                 {
@@ -68,7 +68,7 @@ namespace Arma_3_LTRM
         {
             treeView.Items.Clear();
 
-            foreach (string modPath in Modlist)
+            foreach (string modPath in ModList)
             {
                 var treeViewItem = new TreeViewItem
                 {

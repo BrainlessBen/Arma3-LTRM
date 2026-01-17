@@ -1,7 +1,8 @@
 using System.Windows;
+using Arma_3_LTRM.Models;
 using MessageBox = System.Windows.MessageBox;
 
-namespace Arma_3_LTRM
+namespace Arma_3_LTRM.Views
 {
     public partial class AddRepositoryWindow : Window
     {

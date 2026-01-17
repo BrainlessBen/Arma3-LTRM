@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Arma 3 LTRM")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+637d1d212783add24b3d00797d09a1d3b18e5dc7")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+58307837293e5179b5668c8c67998086d57dd137")]
 [assembly: System.Reflection.AssemblyProductAttribute("Arma 3 LTRM")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Arma 3 LTRM")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

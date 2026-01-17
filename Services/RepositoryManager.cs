@@ -1,8 +1,9 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.Json;
+using Arma_3_LTRM.Models;
 
-namespace Arma_3_LTRM
+namespace Arma_3_LTRM.Services
 {
     public class RepositoryManager
     {
