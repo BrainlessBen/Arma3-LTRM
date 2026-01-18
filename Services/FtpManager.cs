@@ -176,18 +176,80 @@ namespace Arma_3_LTRM.Services
                 cancellationToken.ThrowIfCancellationRequested();
 
                 FtpDirectoryCache cache;
+                var repositoryId = repository.Id.ToString();
 
                 // Try to use existing cache
-                var cachedData = _cacheManager.LoadCache(repository.Id.ToString());
-                if (cachedData != null && !cachedData.IsExpired() && cachedData.DirectoryCache.ContainsKey(remotePath))
+                var existingCache = _cacheManager.LoadCache(repositoryId);
+                if (existingCache != null && !existingCache.IsExpired())
                 {
-                    progress?.Report($"Using cached data for analysis...");
-                    cache = ConvertCachedDataToCache(cachedData);
+                    if (existingCache.DirectoryCache.ContainsKey(remotePath))
+                    {
+                        progress?.Report($"Using cached data for analysis...");
+                        cache = ConvertCachedDataToCache(existingCache);
+                    }
+                    else
+                    {
+                        // Cache exists but doesn't have this specific path - scan and merge
+                        progress?.Report("Building cache for analysis...");
+                        cache = await Task.Run(() => BuildDirectoryCache(ftpUri, repository.Username, repository.Password, remotePath, progress, cancellationToken), cancellationToken);
+                        
+                        cancellationToken.ThrowIfCancellationRequested();
+                        
+                        // Merge new path into existing cache
+                        var mergedCache = existingCache.DirectoryCache;
+                        var newCacheData = ConvertCacheToCachedData(cache);
+                        
+                        foreach (var kvp in newCacheData)
+                        {
+                            mergedCache[kvp.Key] = kvp.Value;
+                        }
+                        
+                        // Save updated cache
+                        var cachedData = new CachedRepositoryData
+                        {
+                            RepositoryId = repositoryId,
+                            RepositoryName = existingCache.RepositoryName,
+                            LastScanned = DateTime.Now,
+                            ExpiresAt = DateTime.Now.Add(_cacheLifetime),
+                            RepositorySnapshot = existingCache.RepositorySnapshot,
+                            DirectoryCache = mergedCache,
+                            TotalFiles = mergedCache.Values.Sum(x => x.Count(i => !i.IsDirectory)),
+                            TotalDirectories = mergedCache.Count,
+                            TotalSizeBytes = mergedCache.Values.SelectMany(x => x).Sum(x => x.Size)
+                        };
+                        
+                        _cacheManager.SaveCache(cachedData);
+                        progress?.Report($"Cache updated for analysis");
+                        
+                        // Update cache reference to use merged data
+                        cache = ConvertCachedDataToCache(cachedData);
+                    }
                 }
                 else
                 {
+                    // No cache or expired - build new cache
                     progress?.Report("Building cache for analysis...");
                     cache = await Task.Run(() => BuildDirectoryCache(ftpUri, repository.Username, repository.Password, remotePath, progress, cancellationToken), cancellationToken);
+                    
+                    cancellationToken.ThrowIfCancellationRequested();
+                    
+                    // Save new cache
+                    var newCacheData = ConvertCacheToCachedData(cache);
+                    var cachedData = new CachedRepositoryData
+                    {
+                        RepositoryId = repositoryId,
+                        RepositoryName = repository.Name,
+                        LastScanned = DateTime.Now,
+                        ExpiresAt = DateTime.Now.Add(_cacheLifetime),
+                        RepositorySnapshot = CachedRepositoryData.GenerateRepositorySnapshot(repository),
+                        DirectoryCache = newCacheData,
+                        TotalFiles = newCacheData.Values.Sum(x => x.Count(i => !i.IsDirectory)),
+                        TotalDirectories = newCacheData.Count,
+                        TotalSizeBytes = newCacheData.Values.SelectMany(x => x).Sum(x => x.Size)
+                    };
+                    
+                    _cacheManager.SaveCache(cachedData);
+                    progress?.Report($"Cache saved for analysis");
                 }
 
                 cancellationToken.ThrowIfCancellationRequested();
