@@ -261,7 +261,7 @@ namespace Arma_3_LTRM.Views
                                 var dlcPath = Path.Combine(arma3Dir, modFolder.FolderPath);
                                 if (Directory.Exists(dlcPath))
                                 {
-                                    modFolders.Add(dlcPath);
+                                    modFolders.Add(modFolder.FolderPath);
                                 }
                             }
                             else if (modFolder.ItemType == ModItemType.Workshop && !string.IsNullOrEmpty(arma3Dir))
