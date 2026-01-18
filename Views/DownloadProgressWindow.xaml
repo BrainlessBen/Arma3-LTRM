@@ -5,22 +5,58 @@ xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 mc:Ignorable="d"
         Title="Download Progress" 
-        Height="400" 
+        Height="450" 
         Width="600" 
         WindowStartupLocation="CenterOwner"
         FontFamily="Calibri"
-        Background="#1E1E1E">
+        Background="#1E1E1E"
+        Closing="Window_Closing">
     <Window.Resources>
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="#E0E0E0"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="FontFamily" Value="Consolas"/>
         </Style>
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#B73A3A"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="3">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#D84848"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#3F3F46"/>
+                    <Setter Property="Foreground" Value="#808080"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
     
     <Grid Margin="20">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
             <TextBlock x:Name="ProgressTextBlock" TextWrapping="Wrap"/>
         </ScrollViewer>
+        
+        <Button x:Name="CancelButton" Grid.Row="1" Content="Cancel Download" 
+                Width="150" HorizontalAlignment="Right" Click="CancelButton_Click"/>
     </Grid>
 </Window>
+

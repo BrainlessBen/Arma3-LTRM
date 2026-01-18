@@ -30,7 +30,7 @@ namespace Arma_3_LTRM.Services
         private readonly int _maxConcurrentDownloads = 8;
         private readonly int _bufferSize = 65536; // 64KB buffer
 
-        public async Task<bool> DownloadRepositoryAsync(Repository repository, string destinationPath, IProgress<string>? progress = null)
+        public async Task<bool> DownloadRepositoryAsync(Repository repository, string destinationPath, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -40,6 +40,8 @@ namespace Arma_3_LTRM.Services
                 progress?.Report($"Connecting to {repository.Url}:{repository.Port}...");
 
                 var ftpUri = new Uri($"ftp://{repository.Url}:{repository.Port}/");
+                
+                cancellationToken.ThrowIfCancellationRequested();
                 
                 if (!TestConnection(repository))
                 {
@@ -51,16 +53,25 @@ namespace Arma_3_LTRM.Services
 
                 progress?.Report("Connection successful. Building folder structure cache...");
                 
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 // Build complete directory cache upfront
-                var cache = await Task.Run(() => BuildDirectoryCache(ftpUri, repository.Username, repository.Password, "/", progress));
+                var cache = await Task.Run(() => BuildDirectoryCache(ftpUri, repository.Username, repository.Password, "/", progress, cancellationToken), cancellationToken);
                 
                 progress?.Report($"Cache built. Found {cache.Cache.Values.Sum(x => x.Count(i => !i.IsDirectory))} files in {cache.Cache.Count} directories.");
                 progress?.Report("Starting download...");
                 
-                await Task.Run(() => DownloadDirectoryFromCache(cache, "/", repository.Username, repository.Password, destinationPath, ftpUri.Host, ftpUri.Port, progress));
+                cancellationToken.ThrowIfCancellationRequested();
+                
+                await Task.Run(() => DownloadDirectoryFromCache(cache, "/", repository.Username, repository.Password, destinationPath, ftpUri.Host, ftpUri.Port, progress, cancellationToken), cancellationToken);
                 
                 progress?.Report($"Sync completed: {_downloadedFiles} files downloaded, {_skippedFiles} files up-to-date");
                 return true;
+            }
+            catch (OperationCanceledException)
+            {
+                progress?.Report("Download cancelled by user.");
+                return false;
             }
             catch (Exception ex)
             {
@@ -71,100 +82,110 @@ namespace Arma_3_LTRM.Services
             }
         }
 
-        private FtpDirectoryCache BuildDirectoryCache(Uri ftpUri, string username, string password, string currentPath, IProgress<string>? progress)
+        private FtpDirectoryCache BuildDirectoryCache(Uri ftpUri, string username, string password, string currentPath, IProgress<string>? progress, CancellationToken cancellationToken)
         {
             var cache = new FtpDirectoryCache();
-            var directoriesToScan = new ConcurrentQueue<string>();
-            directoriesToScan.Enqueue(currentPath);
-
-            var tasks = new List<Task>();
+            var processedPaths = new System.Collections.Concurrent.ConcurrentDictionary<string, bool>();
             var semaphore = new SemaphoreSlim(_maxConcurrentDownloads);
-
-            while (!directoriesToScan.IsEmpty || tasks.Count > 0)
-            {
-                while (directoriesToScan.TryDequeue(out var path))
-                {
-                    var task = Task.Run(async () =>
-                    {
-                        await semaphore.WaitAsync();
-                        try
-                        {
-                            var items = GetDirectoryListingOptimized(ftpUri, username, password, path);
-                            lock (cache.Cache)
-                            {
-                                cache.Cache[path] = items;
-                            }
-                            progress?.Report($"Scanned: {path} ({items.Count} items)");
-
-                            foreach (var item in items.Where(i => i.IsDirectory && i.Name != "." && i.Name != ".."))
-                            {
-                                directoriesToScan.Enqueue(item.FullPath);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            progress?.Report($"Error scanning {path}: {ex.Message}");
-                        }
-                        finally
-                        {
-                            semaphore.Release();
-                        }
-                    });
-                    tasks.Add(task);
-                }
-
-                if (tasks.Count > 0)
-                {
-                    Task.WaitAny(tasks.ToArray());
-                    tasks.RemoveAll(t => t.IsCompleted);
-                }
-            }
-
-            Task.WaitAll(tasks.ToArray());
+            
+            ScanDirectoryRecursive(ftpUri, username, password, currentPath, cache, processedPaths, semaphore, progress, cancellationToken);
+            
             return cache;
         }
 
-        private void DownloadDirectoryFromCache(FtpDirectoryCache cache, string currentPath, string username, string password, string destinationPath, string ftpHost, int ftpPort, IProgress<string>? progress)
+        private void ScanDirectoryRecursive(Uri ftpUri, string username, string password, string path, 
+            FtpDirectoryCache cache, System.Collections.Concurrent.ConcurrentDictionary<string, bool> processedPaths, 
+            SemaphoreSlim semaphore, IProgress<string>? progress, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            
+            // Use TryAdd to atomically check and add - prevents duplicate processing
+            if (!processedPaths.TryAdd(path, true))
+                return;
+
+            semaphore.Wait(cancellationToken);
+            try
+            {
+                var items = GetDirectoryListingOptimized(ftpUri, username, password, path);
+                lock (cache.Cache)
+                {
+                    cache.Cache[path] = items;
+                }
+                progress?.Report($"Scanned: {path} ({items.Count} items)");
+
+                // Release semaphore before recursing to allow parallel processing
+                semaphore.Release();
+
+                var subdirs = items.Where(i => i.IsDirectory && i.Name != "." && i.Name != "..").ToList();
+                
+                // Process subdirectories in parallel
+                Parallel.ForEach(subdirs, new ParallelOptions { MaxDegreeOfParallelism = _maxConcurrentDownloads, CancellationToken = cancellationToken }, dir =>
+                {
+                    ScanDirectoryRecursive(ftpUri, username, password, dir.FullPath, cache, processedPaths, semaphore, progress, cancellationToken);
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                semaphore.Release();
+                throw;
+            }
+            catch (Exception ex)
+            {
+                progress?.Report($"Error scanning {path}: {ex.Message}");
+                semaphore.Release();
+            }
+        }
+
+        private void DownloadDirectoryFromCache(FtpDirectoryCache cache, string currentPath, string username, string password, string destinationPath, string ftpHost, int ftpPort, IProgress<string>? progress, CancellationToken cancellationToken)
         {
             try
             {
-                if (!Directory.Exists(destinationPath))
-                {
-                    Directory.CreateDirectory(destinationPath);
-                }
+                cancellationToken.ThrowIfCancellationRequested();
+                
+                // Collect all files to download first
+                var allFilesToDownload = new ConcurrentBag<(FtpItem file, string localPath)>();
+                CollectFilesToDownload(cache, currentPath, destinationPath, allFilesToDownload);
 
-                if (!cache.Cache.TryGetValue(currentPath, out var items))
-                    return;
+                progress?.Report($"Found {allFilesToDownload.Count} files to check...");
 
-                var subdirectories = items.Where(i => i.IsDirectory && i.Name != "." && i.Name != "..").ToList();
-                var files = items.Where(i => !i.IsDirectory).ToList();
+                // Filter files that actually need downloading
+                var filesToDownload = allFilesToDownload
+                    .Where(f => ShouldDownloadFile(f.localPath, f.file.Size, f.file.LastModified))
+                    .ToList();
 
-                // Process subdirectories first
-                foreach (var dir in subdirectories)
-                {
-                    var localPath = Path.Combine(destinationPath, dir.Name);
-                    DownloadDirectoryFromCache(cache, dir.FullPath, username, password, localPath, ftpHost, ftpPort, progress);
-                }
+                progress?.Report($"{filesToDownload.Count} files need to be downloaded, {allFilesToDownload.Count - filesToDownload.Count} files up-to-date");
 
-                // Download files in parallel
-                var filesToDownload = files.Where(f => ShouldDownloadFile(
-                    Path.Combine(destinationPath, f.Name), f.Size, f.LastModified)).ToList();
-
+                cancellationToken.ThrowIfCancellationRequested();
+                
+                // Download all files in parallel
                 var semaphore = new SemaphoreSlim(_maxConcurrentDownloads);
-                var downloadTasks = filesToDownload.Select(async file =>
+                var downloadTasks = filesToDownload.Select(async fileInfo =>
                 {
                     await semaphore.WaitAsync();
                     try
                     {
-                        var localPath = Path.Combine(destinationPath, file.Name);
-                        progress?.Report($"Downloading: {file.Name} ({FormatFileSize(file.Size)})");
-                        var itemUri = new Uri($"ftp://{ftpHost}:{ftpPort}{file.FullPath}");
-                        await Task.Run(() => DownloadFileWithProgress(itemUri, username, password, localPath, file.Size, file.LastModified, progress));
+                        // Ensure directory exists
+                        var directory = Path.GetDirectoryName(fileInfo.localPath);
+                        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                        {
+                            lock (cache)
+                            {
+                                Directory.CreateDirectory(directory);
+                            }
+                        }
+
+                        progress?.Report($"Downloading: {fileInfo.file.Name} ({FormatFileSize(fileInfo.file.Size)})");
+                        
+                        // Properly escape the path for URI construction to handle @ symbols
+                        var escapedPath = Uri.EscapeDataString(fileInfo.file.FullPath).Replace("%2F", "/");
+                        var itemUri = new Uri($"ftp://{ftpHost}:{ftpPort}{escapedPath}");
+                        
+                        await Task.Run(() => DownloadFileWithProgress(itemUri, username, password, fileInfo.localPath, fileInfo.file.Size, fileInfo.file.LastModified, progress));
                         Interlocked.Increment(ref _downloadedFiles);
                     }
                     catch (Exception ex)
                     {
-                        progress?.Report($"Failed to download {file.Name}: {ex.Message}");
+                        progress?.Report($"Failed to download {fileInfo.file.Name}: {ex.Message}");
                     }
                     finally
                     {
@@ -173,7 +194,7 @@ namespace Arma_3_LTRM.Services
                 }).ToArray();
 
                 Task.WaitAll(downloadTasks);
-                Interlocked.Add(ref _skippedFiles, files.Count - filesToDownload.Count);
+                Interlocked.Add(ref _skippedFiles, allFilesToDownload.Count - filesToDownload.Count);
             }
             catch (Exception ex)
             {
@@ -181,18 +202,49 @@ namespace Arma_3_LTRM.Services
             }
         }
 
-        private List<FtpItem> GetDirectoryListingOptimized(Uri ftpUri, string username, string password, string currentPath)
+        private void CollectFilesToDownload(FtpDirectoryCache cache, string currentPath, string destinationPath, ConcurrentBag<(FtpItem file, string localPath)> filesToDownload)
+        {
+            if (!cache.Cache.TryGetValue(currentPath, out var items))
+                return;
+
+            var subdirectories = items.Where(i => i.IsDirectory && i.Name != "." && i.Name != "..").ToList();
+            var files = items.Where(i => !i.IsDirectory).ToList();
+
+            // Add files from current directory
+            foreach (var file in files)
+            {
+                var localPath = Path.Combine(destinationPath, file.Name);
+                filesToDownload.Add((file, localPath));
+            }
+
+            // Recursively collect from subdirectories
+            foreach (var dir in subdirectories)
+            {
+                var localPath = Path.Combine(destinationPath, dir.Name);
+                CollectFilesToDownload(cache, dir.FullPath, localPath, filesToDownload);
+            }
+        }
+
+        private List<FtpItem> GetDirectoryListingOptimized(Uri baseUri, string username, string password, string currentPath)
         {
             var items = new List<FtpItem>();
+            
+            // Construct the full URI for this path - escape special characters like @
+            var escapedPath = Uri.EscapeDataString(currentPath.TrimStart('/')).Replace("%2F", "/");
+            var pathUri = new Uri(baseUri, escapedPath);
+            if (!pathUri.AbsolutePath.EndsWith("/"))
+            {
+                pathUri = new Uri(pathUri.ToString() + "/");
+            }
 
             // Try MLSD first (modern, structured listing)
             try
             {
-                var mlsdRequest = (FtpWebRequest)WebRequest.Create(ftpUri);
+                var mlsdRequest = (FtpWebRequest)WebRequest.Create(pathUri);
                 mlsdRequest.Method = "MLSD";
                 mlsdRequest.Credentials = new NetworkCredential(username, password);
                 mlsdRequest.UseBinary = true;
-                mlsdRequest.KeepAlive = true;
+                mlsdRequest.KeepAlive = false;
 
                 using var mlsdResponse = (FtpWebResponse)mlsdRequest.GetResponse();
                 using var mlsdStream = mlsdResponse.GetResponseStream();
@@ -220,11 +272,11 @@ namespace Arma_3_LTRM.Services
             // Try LIST -al (detailed listing)
             try
             {
-                var detailsRequest = (FtpWebRequest)WebRequest.Create(ftpUri);
+                var detailsRequest = (FtpWebRequest)WebRequest.Create(pathUri);
                 detailsRequest.Method = WebRequestMethods.Ftp.ListDirectoryDetails;
                 detailsRequest.Credentials = new NetworkCredential(username, password);
                 detailsRequest.UseBinary = true;
-                detailsRequest.KeepAlive = true;
+                detailsRequest.KeepAlive = false;
 
                 using var detailsResponse = (FtpWebResponse)detailsRequest.GetResponse();
                 using var detailsStream = detailsResponse.GetResponseStream();
@@ -252,11 +304,11 @@ namespace Arma_3_LTRM.Services
             // Fallback: Simple listing (slowest)
             try
             {
-                var listRequest = (FtpWebRequest)WebRequest.Create(ftpUri);
+                var listRequest = (FtpWebRequest)WebRequest.Create(pathUri);
                 listRequest.Method = WebRequestMethods.Ftp.ListDirectory;
                 listRequest.Credentials = new NetworkCredential(username, password);
                 listRequest.UseBinary = true;
-                listRequest.KeepAlive = true;
+                listRequest.KeepAlive = false;
 
                 using var listResponse = (FtpWebResponse)listRequest.GetResponse();
                 using var listStream = listResponse.GetResponseStream();
@@ -277,7 +329,9 @@ namespace Arma_3_LTRM.Services
                 Parallel.ForEach(fileNames, parallelOptions, fileName =>
                 {
                     var itemPath = currentPath.TrimEnd('/') + "/" + fileName;
-                    var itemUri = new Uri(ftpUri, fileName);
+                    // Properly escape the file name for URI construction
+                    var escapedFileName = Uri.EscapeDataString(fileName);
+                    var itemUri = new Uri(pathUri, escapedFileName);
                     var item = new FtpItem
                     {
                         Name = fileName,
@@ -290,7 +344,7 @@ namespace Arma_3_LTRM.Services
                         sizeRequest.Method = WebRequestMethods.Ftp.GetFileSize;
                         sizeRequest.Credentials = new NetworkCredential(username, password);
                         sizeRequest.UseBinary = true;
-                        sizeRequest.KeepAlive = true;
+                        sizeRequest.KeepAlive = false;
                         sizeRequest.Timeout = 5000;
 
                         using var sizeResponse = (FtpWebResponse)sizeRequest.GetResponse();
@@ -507,7 +561,9 @@ namespace Arma_3_LTRM.Services
                     if (string.IsNullOrEmpty(fileName) || fileName == "." || fileName == "..")
                         continue;
 
-                    var itemUri = new Uri(ftpUri, fileName);
+                    // Properly escape the file name for URI construction to handle @ symbols
+                    var escapedFileName = Uri.EscapeDataString(fileName);
+                    var itemUri = new Uri(ftpUri, escapedFileName);
                     var item = new FtpItem { Name = fileName };
 
                     try
@@ -644,7 +700,7 @@ namespace Arma_3_LTRM.Services
                 request.Method = WebRequestMethods.Ftp.DownloadFile;
                 request.Credentials = new NetworkCredential(username, password);
                 request.UseBinary = true;
-                request.KeepAlive = true;
+                request.KeepAlive = false;
                 request.UsePassive = true;
 
                 using var response = (FtpWebResponse)request.GetResponse();
@@ -654,21 +710,11 @@ namespace Arma_3_LTRM.Services
                 byte[] buffer = new byte[_bufferSize];
                 long totalBytesRead = 0;
                 int bytesRead;
-                int lastReportedPercent = -1;
 
                 while ((bytesRead = responseStream.Read(buffer, 0, buffer.Length)) > 0)
                 {
                     fileStream.Write(buffer, 0, bytesRead);
                     totalBytesRead += bytesRead;
-
-                    if (fileSize > 0)
-                    {
-                        int currentPercent = (int)((totalBytesRead * 100) / fileSize);
-                        if (currentPercent != lastReportedPercent && currentPercent % 25 == 0)
-                        {
-                            lastReportedPercent = currentPercent;
-                        }
-                    }
                 }
 
                 fileStream.Close();
@@ -737,7 +783,9 @@ namespace Arma_3_LTRM.Services
                 var items = new List<FtpBrowseItem>();
                 try
                 {
-                    var ftpUri = new Uri($"ftp://{ftpUrl}:{port}{path}");
+                    // Properly escape the path to handle @ symbols and other special characters
+                    var escapedPath = Uri.EscapeDataString(path).Replace("%2F", "/");
+                    var ftpUri = new Uri($"ftp://{ftpUrl}:{port}{escapedPath}");
                     if (!ftpUri.AbsolutePath.EndsWith("/"))
                     {
                         ftpUri = new Uri(ftpUri.ToString() + "/");
@@ -768,7 +816,7 @@ namespace Arma_3_LTRM.Services
             });
         }
 
-        public async Task DownloadFolderAsync(string ftpUrl, int port, string username, string password, string remotePath, string localPath, IProgress<string>? progress = null)
+        public async Task DownloadFolderAsync(string ftpUrl, int port, string username, string password, string remotePath, string localPath, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
         {
             await Task.Run(() =>
             {
@@ -777,29 +825,32 @@ namespace Arma_3_LTRM.Services
                     _skippedFiles = 0;
                     _downloadedFiles = 0;
 
-                    var ftpUri = new Uri($"ftp://{ftpUrl}:{port}{remotePath}");
-                    if (!ftpUri.AbsolutePath.EndsWith("/"))
-                    {
-                        ftpUri = new Uri(ftpUri.ToString() + "/");
-                    }
-
+                    cancellationToken.ThrowIfCancellationRequested();
+                    
                     progress?.Report($"Building folder structure cache for: {remotePath}");
                     
                     var baseUri = new Uri($"ftp://{ftpUrl}:{port}/");
-                    var cache = BuildDirectoryCache(baseUri, username, password, remotePath, progress);
+                    var cache = BuildDirectoryCache(baseUri, username, password, remotePath, progress, cancellationToken);
+                    
+                    cancellationToken.ThrowIfCancellationRequested();
                     
                     progress?.Report($"Cache built. Found {cache.Cache.Values.Sum(x => x.Count(i => !i.IsDirectory))} files.");
                     progress?.Report($"Downloading folder: {remotePath}");
                     
-                    DownloadDirectoryFromCache(cache, remotePath, username, password, localPath, ftpUrl, port, progress);
+                    DownloadDirectoryFromCache(cache, remotePath, username, password, localPath, ftpUrl, port, progress, cancellationToken);
                     
                     progress?.Report($"Folder download completed: {_downloadedFiles} files downloaded, {_skippedFiles} files up-to-date");
+                }
+                catch (OperationCanceledException)
+                {
+                    progress?.Report($"Download cancelled.");
+                    throw;
                 }
                 catch (Exception ex)
                 {
                     progress?.Report($"Error downloading folder {remotePath}: {ex.Message}");
                 }
-            });
+            }, cancellationToken);
         }
     }
 }

@@ -8,6 +8,7 @@ namespace Arma_3_LTRM.Models
     {
         private string _arma3ExePath;
         private string _baseDownloadLocation;
+        private List<string> _baseDownloadLocations;
         private List<string> _hiddenRepositories;
         private List<string> _hiddenEvents;
 
@@ -24,6 +25,7 @@ namespace Arma_3_LTRM.Models
             }
         }
 
+        [Obsolete("Use BaseDownloadLocations instead. Kept for backward compatibility.")]
         public string BaseDownloadLocation
         {
             get => _baseDownloadLocation;
@@ -33,6 +35,19 @@ namespace Arma_3_LTRM.Models
                 {
                     _baseDownloadLocation = value;
                     OnPropertyChanged(nameof(BaseDownloadLocation));
+                }
+            }
+        }
+
+        public List<string> BaseDownloadLocations
+        {
+            get => _baseDownloadLocations;
+            set
+            {
+                if (_baseDownloadLocations != value)
+                {
+                    _baseDownloadLocations = value;
+                    OnPropertyChanged(nameof(BaseDownloadLocations));
                 }
             }
         }

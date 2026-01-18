@@ -65,15 +65,30 @@
         </StackPanel>
 
         <StackPanel Grid.Row="2">
-            <TextBlock Text="Base Download Location" FontWeight="Bold" Margin="0,0,0,8"/>
+            <TextBlock Text="Base Download Locations (in order of preference)" FontWeight="Bold" Margin="0,0,0,8"/>
+            <TextBlock Text="The first location will be used as the default. You can reorder them using the buttons." 
+                       FontSize="12" Foreground="#999" Margin="0,0,0,5"/>
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="10"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBox x:Name="BaseDownloadPathTextBox" Grid.Column="0" IsReadOnly="True"/>
-                <Button x:Name="BrowseDownloadButton" Grid.Column="2" Content="Browse..." Click="BrowseDownloadButton_Click"/>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="5"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                
+                <ListBox x:Name="BaseDownloadLocationsListBox" Grid.Column="0" Grid.Row="0" 
+                         Height="120" SelectionMode="Single"/>
+                
+                <StackPanel Grid.Column="2" Grid.Row="0" VerticalAlignment="Center">
+                    <Button x:Name="AddLocationButton" Content="Add..." Width="80" Click="AddLocationButton_Click" Margin="0,0,0,5"/>
+                    <Button x:Name="RemoveLocationButton" Content="Remove" Width="80" Click="RemoveLocationButton_Click" Margin="0,0,0,5"/>
+                    <Button x:Name="MoveUpButton" Content="Move Up" Width="80" Click="MoveUpButton_Click" Margin="0,0,0,5"/>
+                    <Button x:Name="MoveDownButton" Content="Move Down" Width="80" Click="MoveDownButton_Click"/>
+                </StackPanel>
             </Grid>
         </StackPanel>
 
