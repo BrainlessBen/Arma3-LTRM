@@ -1147,6 +1147,16 @@ namespace Arma_3_LTRM.Services
 
         public async Task DownloadFolderAsync(string ftpUrl, int port, string username, string password, string remotePath, string localPath, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
         {
+            await DownloadFolderAsync(ftpUrl, port, username, password, remotePath, localPath, progress, cancellationToken, null);
+        }
+
+        public async Task DownloadFolderAsync(Repository repository, string remotePath, string localPath, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
+        {
+            await DownloadFolderAsync(repository.Url, repository.Port, repository.Username, repository.Password, remotePath, localPath, progress, cancellationToken, repository.Id.ToString());
+        }
+
+        private async Task DownloadFolderAsync(string ftpUrl, int port, string username, string password, string remotePath, string localPath, IProgress<string>? progress, CancellationToken cancellationToken, string? repositoryId)
+        {
             await Task.Run(async () =>
             {
                 try
@@ -1157,14 +1167,117 @@ namespace Arma_3_LTRM.Services
 
                     cancellationToken.ThrowIfCancellationRequested();
                     
-                    progress?.Report($"Building folder structure cache for: {remotePath}");
+                    FtpDirectoryCache cache;
+                    bool cacheUsed = false;
+
+                    // Try to use existing cache first if repository ID is provided
+                    if (!string.IsNullOrEmpty(repositoryId))
+                    {
+                        var existingCache = _cacheManager.LoadCache(repositoryId);
+                        
+                        if (existingCache != null && !existingCache.IsExpired())
+                        {
+                            // Check if cache contains the requested path
+                            if (existingCache.DirectoryCache.ContainsKey(remotePath))
+                            {
+                                progress?.Report($"? Using cached data for {remotePath} (scanned {FormatAge(DateTime.Now - existingCache.LastScanned)} ago)");
+                                System.Diagnostics.Debug.WriteLine($"? Using cached folder data for {remotePath} in repository {repositoryId}");
+                                
+                                cache = ConvertCachedDataToCache(existingCache);
+                                cacheUsed = true;
+                            }
+                            else
+                            {
+                                // Cache exists but doesn't have this specific path - need to scan and merge
+                                progress?.Report($"Building cache for new path: {remotePath}");
+                                System.Diagnostics.Debug.WriteLine($"Cache exists but missing path {remotePath}, scanning FTP...");
+                                
+                                var baseUri = new Uri($"ftp://{ftpUrl}:{port}/");
+                                cache = BuildDirectoryCache(baseUri, username, password, remotePath, progress, cancellationToken);
+                                
+                                cancellationToken.ThrowIfCancellationRequested();
+                                
+                                // Merge new path into existing cache
+                                var mergedCache = existingCache.DirectoryCache;
+                                var newCacheData = ConvertCacheToCachedData(cache);
+                                
+                                foreach (var kvp in newCacheData)
+                                {
+                                    mergedCache[kvp.Key] = kvp.Value;
+                                }
+                                
+                                // Save updated cache
+                                var totalFiles = mergedCache.Values.Sum(x => x.Count(i => !i.IsDirectory));
+                                var totalDirs = mergedCache.Count;
+                                var totalSize = mergedCache.Values.SelectMany(x => x).Sum(x => x.Size);
+                                
+                                var cachedData = new CachedRepositoryData
+                                {
+                                    RepositoryId = repositoryId,
+                                    RepositoryName = existingCache.RepositoryName,
+                                    LastScanned = DateTime.Now,
+                                    ExpiresAt = DateTime.Now.Add(_cacheLifetime),
+                                    RepositorySnapshot = existingCache.RepositorySnapshot,
+                                    DirectoryCache = mergedCache,
+                                    TotalFiles = totalFiles,
+                                    TotalDirectories = totalDirs,
+                                    TotalSizeBytes = totalSize
+                                };
+                                
+                                _cacheManager.SaveCache(cachedData);
+                                progress?.Report($"? Cache updated: {totalFiles} files, {totalDirs} directories");
+                                System.Diagnostics.Debug.WriteLine($"Merged new path {remotePath} into existing cache for repository {repositoryId}");
+                            }
+                        }
+                        else
+                        {
+                            // No cache or expired - build new cache
+                            var reason = existingCache == null ? "no cache found" : "cache expired";
+                            progress?.Report($"Building folder structure cache for: {remotePath} ({reason})");
+                            System.Diagnostics.Debug.WriteLine($"Building new cache for {remotePath}: {reason}");
+                            
+                            var baseUri = new Uri($"ftp://{ftpUrl}:{port}/");
+                            cache = BuildDirectoryCache(baseUri, username, password, remotePath, progress, cancellationToken);
+                            
+                            cancellationToken.ThrowIfCancellationRequested();
+                            
+                            // Save new cache
+                            var newCacheData = ConvertCacheToCachedData(cache);
+                            var totalFiles = newCacheData.Values.Sum(x => x.Count(i => !i.IsDirectory));
+                            var totalDirs = newCacheData.Count;
+                            var totalSize = newCacheData.Values.SelectMany(x => x).Sum(x => x.Size);
+                            
+                            var cachedData = new CachedRepositoryData
+                            {
+                                RepositoryId = repositoryId,
+                                RepositoryName = "Unknown",
+                                LastScanned = DateTime.Now,
+                                ExpiresAt = DateTime.Now.Add(_cacheLifetime),
+                                RepositorySnapshot = "",
+                                DirectoryCache = newCacheData,
+                                TotalFiles = totalFiles,
+                                TotalDirectories = totalDirs,
+                                TotalSizeBytes = totalSize
+                            };
+                            
+                            _cacheManager.SaveCache(cachedData);
+                            progress?.Report($"? Cache saved: {totalFiles} files, {totalDirs} directories");
+                            System.Diagnostics.Debug.WriteLine($"Created new cache for repository {repositoryId}");
+                        }
+                    }
+                    else
+                    {
+                        // No repository ID - can't use cache
+                        progress?.Report($"Building folder structure cache for: {remotePath}");
+                        
+                        var baseUri = new Uri($"ftp://{ftpUrl}:{port}/");
+                        cache = BuildDirectoryCache(baseUri, username, password, remotePath, progress, cancellationToken);
+                        
+                        cancellationToken.ThrowIfCancellationRequested();
+                        
+                        progress?.Report($"Cache built. Found {cache.Cache.Values.Sum(x => x.Count(i => !i.IsDirectory))} files.");
+                    }
                     
-                    var baseUri = new Uri($"ftp://{ftpUrl}:{port}/");
-                    var cache = BuildDirectoryCache(baseUri, username, password, remotePath, progress, cancellationToken);
-                    
-                    cancellationToken.ThrowIfCancellationRequested();
-                    
-                    progress?.Report($"Cache built. Found {cache.Cache.Values.Sum(x => x.Count(i => !i.IsDirectory))} files.");
                     progress?.Report($"Downloading folder: {remotePath}");
                     
                     await DownloadDirectoryFromCache(cache, remotePath, username, password, localPath, ftpUrl, port, progress, cancellationToken);
@@ -1181,6 +1294,109 @@ namespace Arma_3_LTRM.Services
                     progress?.Report($"Error downloading folder {remotePath}: {ex.Message}");
                 }
             }, cancellationToken);
+        }
+
+        public async Task CacheAllRepositoriesAsync(IEnumerable<Repository> repositories, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
+        {
+            var repoList = repositories.ToList();
+            int total = repoList.Count;
+            int current = 0;
+            int skipped = 0;
+
+            System.Diagnostics.Debug.WriteLine($"Starting background cache for {total} repositories...");
+
+            foreach (var repository in repoList)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                current++;
+                
+                // Check if cache already exists and is valid
+                var cachedData = _cacheManager.LoadCache(repository.Id.ToString());
+                if (cachedData != null && cachedData.IsValidForRepository(repository, _cacheLifetime))
+                {
+                    progress?.Report($"Caching repositories in background... ({current}/{total} - {skipped} skipped) - {repository.Name}: Already cached");
+                    System.Diagnostics.Debug.WriteLine($"? Repository '{repository.Name}' already has valid cache, skipping");
+                    skipped++;
+                    continue;
+                }
+
+                progress?.Report($"Caching repositories in background... ({current}/{total} - {skipped} skipped) - Scanning {repository.Name}...");
+                System.Diagnostics.Debug.WriteLine($"Caching repository '{repository.Name}'...");
+
+                try
+                {
+                    var ftpUri = new Uri($"ftp://{repository.Url}:{repository.Port}/");
+                    var cache = await Task.Run(() => BuildDirectoryCache(ftpUri, repository.Username, repository.Password, "/", null, cancellationToken), cancellationToken);
+
+                    var newCachedData = new CachedRepositoryData
+                    {
+                        RepositoryId = repository.Id.ToString(),
+                        RepositoryName = repository.Name,
+                        LastScanned = DateTime.Now,
+                        ExpiresAt = DateTime.Now.Add(_cacheLifetime),
+                        RepositorySnapshot = CachedRepositoryData.GenerateRepositorySnapshot(repository),
+                        DirectoryCache = ConvertCacheToCachedData(cache),
+                        TotalFiles = cache.Cache.Values.Sum(x => x.Count(i => !i.IsDirectory)),
+                        TotalDirectories = cache.Cache.Count,
+                        TotalSizeBytes = cache.Cache.Values.SelectMany(x => x).Sum(x => x.Size)
+                    };
+
+                    _cacheManager.SaveCache(newCachedData);
+                    System.Diagnostics.Debug.WriteLine($"? Cached repository '{repository.Name}': {newCachedData.TotalFiles} files, {newCachedData.TotalDirectories} directories");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"? Failed to cache repository '{repository.Name}': {ex.Message}");
+                    skipped++;
+                }
+
+                // Small delay to avoid hammering FTP servers
+                if (current < total)
+                {
+                    await Task.Delay(1000, cancellationToken);
+                }
+            }
+
+            progress?.Report($"Background caching complete! ({current}/{total} - {skipped} skipped)");
+            System.Diagnostics.Debug.WriteLine($"? Background caching complete: {current - skipped} cached, {skipped} skipped");
+        }
+
+        public async Task RefreshCacheForRepositoryAsync(Repository repository, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
+        {
+            System.Diagnostics.Debug.WriteLine($"Refreshing cache for repository: {repository.Name}");
+
+            // Invalidate existing cache
+            InvalidateCache(repository.Id.ToString());
+
+            try
+            {
+                var ftpUri = new Uri($"ftp://{repository.Url}:{repository.Port}/");
+                var cache = await Task.Run(() => BuildDirectoryCache(ftpUri, repository.Username, repository.Password, "/", null, cancellationToken), cancellationToken);
+
+                var cachedData = new CachedRepositoryData
+                {
+                    RepositoryId = repository.Id.ToString(),
+                    RepositoryName = repository.Name,
+                    LastScanned = DateTime.Now,
+                    ExpiresAt = DateTime.Now.Add(_cacheLifetime),
+                    RepositorySnapshot = CachedRepositoryData.GenerateRepositorySnapshot(repository),
+                    DirectoryCache = ConvertCacheToCachedData(cache),
+                    TotalFiles = cache.Cache.Values.Sum(x => x.Count(i => !i.IsDirectory)),
+                    TotalDirectories = cache.Cache.Count,
+                    TotalSizeBytes = cache.Cache.Values.SelectMany(x => x).Sum(x => x.Size)
+                };
+
+                _cacheManager.SaveCache(cachedData);
+                System.Diagnostics.Debug.WriteLine($"? Cache refreshed for repository '{repository.Name}': {cachedData.TotalFiles} files, {cachedData.TotalDirectories} directories");
+
+                progress?.Report($"? Cache refreshed for {repository.Name}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"? Failed to refresh cache for repository '{repository.Name}': {ex.Message}");
+                throw;
+            }
         }
     }
 }

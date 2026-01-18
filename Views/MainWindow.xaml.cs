@@ -24,6 +24,7 @@ namespace Arma_3_LTRM.Views
         private readonly LaunchParametersManager _launchParametersManager;
         private ObservableCollection<string> _downloadLocations;
         private bool _isUpdatingParameters = false;
+        private CancellationTokenSource? _cachingCancellationTokenSource;
 
         public MainWindow()
         {
@@ -652,10 +653,7 @@ namespace Arma_3_LTRM.Views
                     var localPath = Path.Combine(selectedLocation, relativePath);
                     
                     await _ftpManager.DownloadFolderAsync(
-                        repository.Url,
-                        repository.Port,
-                        repository.Username,
-                        repository.Password,
+                        repository,  // ? Now uses Repository object (saves cache!)
                         modFolder.FolderPath,
                         localPath,
                         progress
@@ -839,10 +837,7 @@ namespace Arma_3_LTRM.Views
                         var localPath = Path.Combine(selectedLocation, relativePath);
                         
                         await _ftpManager.DownloadFolderAsync(
-                            repository.Url,
-                            repository.Port,
-                            repository.Username,
-                            repository.Password,
+                            repository,  // ? Now uses Repository object (saves cache!)
                             modFolder.FolderPath,
                             localPath,
                             progress,
@@ -1131,6 +1126,72 @@ namespace Arma_3_LTRM.Views
             {
                 MessageBox.Show($"Failed to launch Arma 3: {ex.Message}", 
                     "Launch Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void StartBackgroundCaching()
+        {
+            _cachingCancellationTokenSource = new CancellationTokenSource();
+            var progress = new Progress<string>(message =>
+            {
+                CacheStatusText.Text = message;
+                CacheStatusBar.Visibility = Visibility.Visible;
+            });
+
+            try
+            {
+                await _ftpManager.CacheAllRepositoriesAsync(_repositoryManager.Repositories, progress, _cachingCancellationTokenSource.Token);
+                
+                // Hide status bar after 3 seconds
+                await Task.Delay(3000);
+                CacheStatusBar.Visibility = Visibility.Collapsed;
+            }
+            catch (OperationCanceledException)
+            {
+                CacheStatusText.Text = "Background caching cancelled";
+                await Task.Delay(2000);
+                CacheStatusBar.Visibility = Visibility.Collapsed;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Background caching error: {ex.Message}");
+                CacheStatusBar.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private async void RefreshCacheButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is Repository repo)
+            {
+                button.IsEnabled = false;
+                var originalContent = button.Content;
+                button.Content = "?";
+
+                try
+                {
+                    CacheStatusText.Text = $"Refreshing cache for {repo.Name}...";
+                    CacheStatusBar.Visibility = Visibility.Visible;
+
+                    System.Diagnostics.Debug.WriteLine($"Manual cache refresh requested for repository: {repo.Name}");
+
+                    await _ftpManager.RefreshCacheForRepositoryAsync(repo);
+
+                    CacheStatusText.Text = $"? Cache refreshed for {repo.Name}";
+                    await Task.Delay(2000);
+                    CacheStatusBar.Visibility = Visibility.Collapsed;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to refresh cache for {repo.Name}: {ex.Message}");
+                    CacheStatusText.Text = $"? Failed to refresh cache: {ex.Message}";
+                    await Task.Delay(3000);
+                    CacheStatusBar.Visibility = Visibility.Collapsed;
+                }
+                finally
+                {
+                    button.Content = originalContent;
+                    button.IsEnabled = true;
+                }
             }
         }
     }

@@ -34,6 +34,7 @@ namespace Arma_3_LTRM.Views
             BaseDownloadLocationsListBox.ItemsSource = _downloadLocations;
 
             CacheLifetimeSlider.Value = _settingsManager.Settings.CacheLifetimeHours;
+            AutoCacheOnStartupCheckBox.IsChecked = _settingsManager.Settings.AutoCacheRepositoriesOnStartup;
         }
 
         private void BrowseArma3Button_Click(object sender, RoutedEventArgs e)

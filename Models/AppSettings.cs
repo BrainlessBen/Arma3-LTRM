@@ -12,6 +12,7 @@ namespace Arma_3_LTRM.Models
         private List<string> _hiddenEvents;
         private LaunchParameters _launchParameters;
         private double _cacheLifetimeHours = 1.0;
+        private bool _autoCacheRepositoriesOnStartup = false;
 
         public string Arma3ExePath
         {
@@ -87,6 +88,19 @@ namespace Arma_3_LTRM.Models
                 {
                     _cacheLifetimeHours = value;
                     OnPropertyChanged(nameof(CacheLifetimeHours));
+                }
+            }
+        }
+
+        public bool AutoCacheRepositoriesOnStartup
+        {
+            get => _autoCacheRepositoriesOnStartup;
+            set
+            {
+                if (_autoCacheRepositoriesOnStartup != value)
+                {
+                    _autoCacheRepositoriesOnStartup = value;
+                    OnPropertyChanged(nameof(AutoCacheRepositoriesOnStartup));
                 }
             }
         }

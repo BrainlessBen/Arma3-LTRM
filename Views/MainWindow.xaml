@@ -961,6 +961,12 @@ Background="#1E1E1E">
                 </Grid>
             </TabItem>
         </TabControl>
+
+        <!-- Status Bar for Background Caching -->
+        <Border Grid.Row="2" Background="#007ACC" BorderThickness="0" 
+                x:Name="CacheStatusBar" Visibility="Collapsed" Padding="10,5">
+            <TextBlock x:Name="CacheStatusText" Foreground="White" FontSize="12"/>
+        </Border>
     </Grid>
 </Window>
 

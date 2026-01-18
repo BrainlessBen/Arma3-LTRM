@@ -114,6 +114,8 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="10"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="10"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -131,7 +133,11 @@
                            Text="{Binding ElementName=CacheLifetimeSlider, Path=Value, StringFormat={}{0:F1} hours}" 
                            VerticalAlignment="Center" Margin="10,0,0,0"/>
                 
-                <Button x:Name="ClearExpiredCachesButton" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" 
+                <CheckBox x:Name="AutoCacheOnStartupCheckBox" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4"
+                          Content="Automatically cache all repositories on startup (background task)" 
+                          VerticalAlignment="Center"/>
+                
+                <Button x:Name="ClearExpiredCachesButton" Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="3" 
                         Content="Clear All Expired Caches" Click="ClearExpiredCachesButton_Click" 
                         HorizontalAlignment="Left" Width="200"/>
             </Grid>
