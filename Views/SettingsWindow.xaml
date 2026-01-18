@@ -60,6 +60,8 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="20"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="20"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -106,12 +108,42 @@
         </StackPanel>
 
         <StackPanel Grid.Row="4">
-            <TextBlock Text="Visibility Settings" FontWeight="Bold" Margin="0,0,0,8"/>
+            <TextBlock Text="FTP Cache Settings" FontWeight="Bold" Margin="0,0,0,8"/>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="10"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="10"/>
+                    <ColumnDefinition Width="200"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Cache Lifetime (hours):" VerticalAlignment="Center"/>
+                <Slider x:Name="CacheLifetimeSlider" Grid.Row="0" Grid.Column="2" 
+                        Minimum="0.5" Maximum="24" Value="1" 
+                        TickFrequency="0.5" IsSnapToTickEnabled="True" 
+                        VerticalAlignment="Center"/>
+                <TextBlock Grid.Row="0" Grid.Column="3" 
+                           Text="{Binding ElementName=CacheLifetimeSlider, Path=Value, StringFormat={}{0:F1} hours}" 
+                           VerticalAlignment="Center" Margin="10,0,0,0"/>
+                
+                <Button x:Name="ClearExpiredCachesButton" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" 
+                        Content="Clear All Expired Caches" Click="ClearExpiredCachesButton_Click" 
+                        HorizontalAlignment="Left" Width="200"/>
+            </Grid>
+        </StackPanel>
+
+        <StackPanel Grid.Row="5">
+            <TextBlock Text="Visibility Settings" FontWeight="Bold" Margin="0,10,0,8"/>
             <TextBlock Text="(These settings will be available after creating repositories and events)" 
                        FontSize="12" Foreground="#999" Margin="0,0,0,10"/>
         </StackPanel>
 
-        <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right">
+        <StackPanel Grid.Row="8" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button x:Name="SaveButton" Content="Save" Width="100" Click="SaveButton_Click" Margin="0,0,10,0"/>
             <Button x:Name="CancelButton" Content="Cancel" Width="100" Click="CancelButton_Click" Background="#3F3F46">
                 <Button.Style>

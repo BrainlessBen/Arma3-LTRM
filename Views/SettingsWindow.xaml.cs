@@ -10,12 +10,14 @@ namespace Arma_3_LTRM.Views
     public partial class SettingsWindow : Window
     {
         private readonly SettingsManager _settingsManager;
+        private readonly FtpManager _ftpManager;
         private ObservableCollection<string> _downloadLocations;
 
-        public SettingsWindow(SettingsManager settingsManager)
+        public SettingsWindow(SettingsManager settingsManager, FtpManager ftpManager)
         {
             InitializeComponent();
             _settingsManager = settingsManager;
+            _ftpManager = ftpManager;
             _downloadLocations = new ObservableCollection<string>();
             LoadSettings();
         }
@@ -30,6 +32,8 @@ namespace Arma_3_LTRM.Views
                 _downloadLocations.Add(location);
             }
             BaseDownloadLocationsListBox.ItemsSource = _downloadLocations;
+
+            CacheLifetimeSlider.Value = _settingsManager.Settings.CacheLifetimeHours;
         }
 
         private void BrowseArma3Button_Click(object sender, RoutedEventArgs e)
@@ -110,9 +114,20 @@ namespace Arma_3_LTRM.Views
         {
             _settingsManager.Settings.Arma3ExePath = Arma3PathTextBox.Text;
             _settingsManager.Settings.BaseDownloadLocations = _downloadLocations.ToList();
+            _settingsManager.Settings.CacheLifetimeHours = CacheLifetimeSlider.Value;
             _settingsManager.SaveSettings();
+
+            _ftpManager.SetCacheLifetime(TimeSpan.FromHours(CacheLifetimeSlider.Value));
+
             DialogResult = true;
             Close();
+        }
+
+        private void ClearExpiredCachesButton_Click(object sender, RoutedEventArgs e)
+        {
+            _ftpManager.ClearExpiredCaches();
+            MessageBox.Show("Expired caches have been cleared.", "Cache Cleared", 
+                MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void CancelButton_Click(object sender, RoutedEventArgs e)

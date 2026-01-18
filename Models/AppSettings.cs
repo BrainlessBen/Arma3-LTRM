@@ -11,6 +11,7 @@ namespace Arma_3_LTRM.Models
         private List<string> _hiddenRepositories;
         private List<string> _hiddenEvents;
         private LaunchParameters _launchParameters;
+        private double _cacheLifetimeHours = 1.0;
 
         public string Arma3ExePath
         {
@@ -73,6 +74,19 @@ namespace Arma_3_LTRM.Models
                 {
                     _launchParameters = value;
                     OnPropertyChanged(nameof(LaunchParameters));
+                }
+            }
+        }
+
+        public double CacheLifetimeHours
+        {
+            get => _cacheLifetimeHours;
+            set
+            {
+                if (Math.Abs(_cacheLifetimeHours - value) > 0.01)
+                {
+                    _cacheLifetimeHours = value;
+                    OnPropertyChanged(nameof(CacheLifetimeHours));
                 }
             }
         }

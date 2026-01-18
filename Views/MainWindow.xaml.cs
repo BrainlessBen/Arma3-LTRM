@@ -35,6 +35,7 @@ namespace Arma_3_LTRM.Views
             _serverManager = new ServerManager();
             _settingsManager = new SettingsManager();
             _ftpManager = new FtpManager();
+            _ftpManager.SetCacheLifetime(TimeSpan.FromHours(_settingsManager.Settings.CacheLifetimeHours));
             _launchParametersManager = new LaunchParametersManager(_settingsManager.Settings.LaunchParameters);
             _launchParametersManager.ParametersChanged += (s, e) => 
             {

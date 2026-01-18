@@ -7,11 +7,12 @@ namespace Arma_3_LTRM.Models
         private Guid _id;
         private bool _isEnabled = true;
         private bool _isChecked = false;
-        private string _name;
-        private string _url;
+        private string _name = string.Empty;
+        private string _url = string.Empty;
         private int _port;
-        private string _username;
-        private string _password;
+        private string _username = string.Empty;
+        private string _password = string.Empty;
+        private string _cacheStatus = string.Empty;
 
         public Guid Id
         {
@@ -113,6 +114,19 @@ namespace Arma_3_LTRM.Models
                 {
                     _password = value;
                     OnPropertyChanged(nameof(Password));
+                }
+            }
+        }
+
+        public string CacheStatus
+        {
+            get => _cacheStatus;
+            set
+            {
+                if (_cacheStatus != value)
+                {
+                    _cacheStatus = value;
+                    OnPropertyChanged(nameof(CacheStatus));
                 }
             }
         }

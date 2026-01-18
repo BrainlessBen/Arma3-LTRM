@@ -30,8 +30,10 @@ namespace Arma_3_LTRM.Services
         private int _deletedFiles = 0;
         private readonly int _maxConcurrentDownloads = 8;
         private readonly int _bufferSize = 65536; // 64KB buffer
+        private readonly FtpCacheManager _cacheManager = new();
+        private TimeSpan _cacheLifetime = TimeSpan.FromHours(1);
 
-        public async Task<bool> DownloadRepositoryAsync(Repository repository, string destinationPath, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
+        public async Task<bool> DownloadRepositoryAsync(Repository repository, string destinationPath, IProgress<string>? progress = null, CancellationToken cancellationToken = default, bool forceRefresh = false)
         {
             try
             {
@@ -53,22 +55,43 @@ namespace Arma_3_LTRM.Services
                     return false;
                 }
 
-                progress?.Report("Connection successful. Building folder structure cache...");
-                
-                cancellationToken.ThrowIfCancellationRequested();
-                
-                // Build complete directory cache upfront
-                var cache = await Task.Run(() => BuildDirectoryCache(ftpUri, repository.Username, repository.Password, "/", progress, cancellationToken), cancellationToken);
-                
-                progress?.Report($"Cache built. Found {cache.Cache.Values.Sum(x => x.Count(i => !i.IsDirectory))} files in {cache.Cache.Count} directories.");
-                progress?.Report("Starting download...");
+                FtpDirectoryCache cache;
+
+                if (!forceRefresh)
+                {
+                    var cachedData = _cacheManager.LoadCache(repository.Id.ToString());
+
+                    if (cachedData != null && cachedData.IsValidForRepository(repository, _cacheLifetime))
+                    {
+                        progress?.Report($"? Using cached directory structure (scanned {FormatAge(DateTime.Now - cachedData.LastScanned)} ago)");
+                        progress?.Report($"  {cachedData.TotalFiles} files, {cachedData.TotalDirectories} directories cached");
+
+                        cache = ConvertCachedDataToCache(cachedData);
+
+                        progress?.Report("Starting download from cache...");
+                    }
+                    else
+                    {
+                        var reason = cachedData == null ? "no cache found"
+                                   : cachedData.IsExpired() ? "cache expired"
+                                   : "repository settings changed";
+
+                        progress?.Report($"Building fresh cache ({reason})...");
+                        cache = await BuildAndSaveCache(repository, ftpUri, progress, cancellationToken);
+                    }
+                }
+                else
+                {
+                    progress?.Report("Force refresh - rebuilding cache...");
+                    cache = await BuildAndSaveCache(repository, ftpUri, progress, cancellationToken);
+                }
                 
                 cancellationToken.ThrowIfCancellationRequested();
                 
                 await DownloadDirectoryFromCache(cache, "/", repository.Username, repository.Password, destinationPath, ftpUri.Host, ftpUri.Port, progress, cancellationToken);
                 
                 var deletionMessage = _deletedFiles > 0 ? $", {_deletedFiles} files deleted" : "";
-                progress?.Report($"Sync completed: {_downloadedFiles} files downloaded, {_skippedFiles} files up-to-date{deletionMessage}");
+                progress?.Report($"? Sync completed: {_downloadedFiles} downloaded, {_skippedFiles} up-to-date{deletionMessage}");
                 return true;
             }
             catch (OperationCanceledException)
@@ -94,6 +117,100 @@ namespace Arma_3_LTRM.Services
             ScanDirectoryRecursive(ftpUri, username, password, currentPath, cache, processedPaths, semaphore, progress, cancellationToken);
             
             return cache;
+        }
+
+        private async Task<FtpDirectoryCache> BuildAndSaveCache(Repository repository, Uri ftpUri, IProgress<string>? progress, CancellationToken cancellationToken)
+        {
+            var cache = await Task.Run(() => BuildDirectoryCache(ftpUri, repository.Username, repository.Password, "/", progress, cancellationToken), cancellationToken);
+
+            progress?.Report($"Cache built: {cache.Cache.Values.Sum(x => x.Count(i => !i.IsDirectory))} files in {cache.Cache.Count} directories");
+
+            var cachedData = new CachedRepositoryData
+            {
+                RepositoryId = repository.Id.ToString(),
+                RepositoryName = repository.Name,
+                LastScanned = DateTime.Now,
+                ExpiresAt = DateTime.Now.Add(_cacheLifetime),
+                RepositorySnapshot = CachedRepositoryData.GenerateRepositorySnapshot(repository),
+                DirectoryCache = ConvertCacheToCachedData(cache),
+                TotalFiles = cache.Cache.Values.Sum(x => x.Count(i => !i.IsDirectory)),
+                TotalDirectories = cache.Cache.Count,
+                TotalSizeBytes = cache.Cache.Values.SelectMany(x => x).Sum(x => x.Size)
+            };
+
+            _cacheManager.SaveCache(cachedData);
+            progress?.Report($"? Cache saved to disk (expires in {_cacheLifetime.TotalHours:F1} hours)");
+
+            return cache;
+        }
+
+        private FtpDirectoryCache ConvertCachedDataToCache(CachedRepositoryData cachedData)
+        {
+            var cache = new FtpDirectoryCache();
+
+            foreach (var kvp in cachedData.DirectoryCache)
+            {
+                cache.Cache[kvp.Key] = kvp.Value.Select(item => new FtpItem
+                {
+                    Name = item.Name,
+                    FullPath = item.FullPath,
+                    IsDirectory = item.IsDirectory,
+                    Size = item.Size,
+                    LastModified = item.LastModified
+                }).ToList();
+            }
+
+            return cache;
+        }
+
+        private Dictionary<string, List<CachedFtpItem>> ConvertCacheToCachedData(FtpDirectoryCache cache)
+        {
+            var result = new Dictionary<string, List<CachedFtpItem>>();
+
+            foreach (var kvp in cache.Cache)
+            {
+                result[kvp.Key] = kvp.Value.Select(item => new CachedFtpItem
+                {
+                    Name = item.Name,
+                    FullPath = item.FullPath,
+                    IsDirectory = item.IsDirectory,
+                    Size = item.Size,
+                    LastModified = item.LastModified
+                }).ToList();
+            }
+
+            return result;
+        }
+
+        private string FormatAge(TimeSpan age)
+        {
+            if (age.TotalMinutes < 1)
+                return "just now";
+            if (age.TotalHours < 1)
+                return $"{(int)age.TotalMinutes} minutes";
+            if (age.TotalDays < 1)
+                return $"{(int)age.TotalHours} hours";
+            return $"{(int)age.TotalDays} days";
+        }
+
+        public void SetCacheLifetime(TimeSpan lifetime)
+        {
+            _cacheLifetime = lifetime;
+        }
+
+        public string GetCacheInfo(string repositoryId)
+        {
+            return _cacheManager.GetCacheInfo(repositoryId);
+        }
+
+        public void InvalidateCache(string repositoryId)
+        {
+            _cacheManager.InvalidateCache(repositoryId);
+        }
+
+        public void ClearExpiredCaches()
+        {
+            _cacheManager.ClearExpiredCaches();
         }
 
         private void ScanDirectoryRecursive(Uri ftpUri, string username, string password, string path, 
