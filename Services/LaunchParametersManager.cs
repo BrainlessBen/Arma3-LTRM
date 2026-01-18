@@ -71,7 +71,12 @@ namespace Arma_3_LTRM.Services
         {
             var parameters = new List<string>();
 
-            if (!string.IsNullOrWhiteSpace(_launchParameters.ProfilePath))
+            if (_launchParameters.UseName && !string.IsNullOrWhiteSpace(_launchParameters.Name))
+            {
+                parameters.Add($"-name=\"{_launchParameters.Name}\"");
+            }
+
+            if (_launchParameters.UseProfile && !string.IsNullOrWhiteSpace(_launchParameters.ProfilePath))
             {
                 parameters.Add($"-profiles=\"{_launchParameters.ProfilePath}\"");
             }

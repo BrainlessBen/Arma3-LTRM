@@ -5,6 +5,9 @@ namespace Arma_3_LTRM.Models
     public class LaunchParameters : INotifyPropertyChanged
     {
         // Profile options
+        private bool _useName;
+        private string _name;
+        private bool _useProfile;
         private string _profilePath;
         private string _unit;
 
@@ -35,6 +38,45 @@ namespace Arma_3_LTRM.Models
         private string _bePath;
 
         #region Profile Options
+
+        public bool UseName
+        {
+            get => _useName;
+            set
+            {
+                if (_useName != value)
+                {
+                    _useName = value;
+                    OnPropertyChanged(nameof(UseName));
+                }
+            }
+        }
+
+        public string Name
+        {
+            get => _name;
+            set
+            {
+                if (_name != value)
+                {
+                    _name = value;
+                    OnPropertyChanged(nameof(Name));
+                }
+            }
+        }
+
+        public bool UseProfile
+        {
+            get => _useProfile;
+            set
+            {
+                if (_useProfile != value)
+                {
+                    _useProfile = value;
+                    OnPropertyChanged(nameof(UseProfile));
+                }
+            }
+        }
 
         public string ProfilePath
         {
@@ -294,6 +336,9 @@ namespace Arma_3_LTRM.Models
 
         public LaunchParameters()
         {
+            _useName = false;
+            _name = string.Empty;
+            _useProfile = false;
             _profilePath = string.Empty;
             _unit = string.Empty;
             _useMission = false;

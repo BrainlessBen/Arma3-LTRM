@@ -85,9 +85,14 @@ namespace Arma_3_LTRM.Views
         private void InitializeParametersUI()
         {
             // Load available profiles
-            ProfileComboBox.ItemsSource = _launchParametersManager.GetAvailableProfiles();
+            var profiles = _launchParametersManager.GetAvailableProfiles();
+            ProfileComboBox.ItemsSource = profiles;
+            NameComboBox.ItemsSource = profiles;
             
             // Bind controls to LaunchParameters model
+            UseNameCheckBox.DataContext = _launchParametersManager.LaunchParameters;
+            NameComboBox.DataContext = _launchParametersManager.LaunchParameters;
+            UseProfileCheckBox.DataContext = _launchParametersManager.LaunchParameters;
             ProfileComboBox.DataContext = _launchParametersManager.LaunchParameters;
             UnitTextBox.DataContext = _launchParametersManager.LaunchParameters;
             UseMissionCheckBox.DataContext = _launchParametersManager.LaunchParameters;
@@ -108,6 +113,15 @@ namespace Arma_3_LTRM.Views
             BePathTextBox.DataContext = _launchParametersManager.LaunchParameters;
             
             // Set up bindings
+            var useNameBinding = new System.Windows.Data.Binding("UseName") { Mode = BindingMode.TwoWay };
+            UseNameCheckBox.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, useNameBinding);
+            
+            var nameBinding = new System.Windows.Data.Binding("Name") { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged };
+            NameComboBox.SetBinding(System.Windows.Controls.ComboBox.SelectedItemProperty, nameBinding);
+            
+            var useProfileBinding = new System.Windows.Data.Binding("UseProfile") { Mode = BindingMode.TwoWay };
+            UseProfileCheckBox.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, useProfileBinding);
+            
             var profileBinding = new System.Windows.Data.Binding("ProfilePath") { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged };
             ProfileComboBox.SetBinding(System.Windows.Controls.ComboBox.SelectedItemProperty, profileBinding);
             
