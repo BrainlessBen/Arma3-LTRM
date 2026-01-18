@@ -63,7 +63,7 @@ namespace Arma_3_LTRM.Services
                 
                 cancellationToken.ThrowIfCancellationRequested();
                 
-                await Task.Run(() => DownloadDirectoryFromCache(cache, "/", repository.Username, repository.Password, destinationPath, ftpUri.Host, ftpUri.Port, progress, cancellationToken), cancellationToken);
+                await DownloadDirectoryFromCache(cache, "/", repository.Username, repository.Password, destinationPath, ftpUri.Host, ftpUri.Port, progress, cancellationToken);
                 
                 progress?.Report($"Sync completed: {_downloadedFiles} files downloaded, {_skippedFiles} files up-to-date");
                 return true;
@@ -136,7 +136,7 @@ namespace Arma_3_LTRM.Services
             }
         }
 
-        private void DownloadDirectoryFromCache(FtpDirectoryCache cache, string currentPath, string username, string password, string destinationPath, string ftpHost, int ftpPort, IProgress<string>? progress, CancellationToken cancellationToken)
+        private async Task DownloadDirectoryFromCache(FtpDirectoryCache cache, string currentPath, string username, string password, string destinationPath, string ftpHost, int ftpPort, IProgress<string>? progress, CancellationToken cancellationToken)
         {
             try
             {
@@ -161,9 +161,11 @@ namespace Arma_3_LTRM.Services
                 var semaphore = new SemaphoreSlim(_maxConcurrentDownloads);
                 var downloadTasks = filesToDownload.Select(async fileInfo =>
                 {
-                    await semaphore.WaitAsync();
+                    await semaphore.WaitAsync(cancellationToken);
                     try
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        
                         // Ensure directory exists
                         var directory = Path.GetDirectoryName(fileInfo.localPath);
                         if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
@@ -174,14 +176,19 @@ namespace Arma_3_LTRM.Services
                             }
                         }
 
-                        progress?.Report($"Downloading: {fileInfo.file.Name} ({FormatFileSize(fileInfo.file.Size)})");
+                        progress?.Report($"Downloading: {fileInfo.file.Name} => {fileInfo.localPath} ({FormatFileSize(fileInfo.file.Size)})");
                         
                         // Properly escape the path for URI construction to handle @ symbols
                         var escapedPath = Uri.EscapeDataString(fileInfo.file.FullPath).Replace("%2F", "/");
                         var itemUri = new Uri($"ftp://{ftpHost}:{ftpPort}{escapedPath}");
                         
-                        await Task.Run(() => DownloadFileWithProgress(itemUri, username, password, fileInfo.localPath, fileInfo.file.Size, fileInfo.file.LastModified, progress));
+                        await Task.Run(() => DownloadFileWithProgress(itemUri, username, password, fileInfo.localPath, fileInfo.file.Size, fileInfo.file.LastModified, progress, cancellationToken), cancellationToken);
                         Interlocked.Increment(ref _downloadedFiles);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Silently handle cancellation for individual tasks
+                        throw;
                     }
                     catch (Exception ex)
                     {
@@ -193,7 +200,16 @@ namespace Arma_3_LTRM.Services
                     }
                 }).ToArray();
 
-                Task.WaitAll(downloadTasks);
+                try
+                {
+                    await Task.WhenAll(downloadTasks);
+                }
+                catch (OperationCanceledException)
+                {
+                    progress?.Report("Download cancelled.");
+                    throw;
+                }
+                
                 Interlocked.Add(ref _skippedFiles, allFilesToDownload.Count - filesToDownload.Count);
             }
             catch (Exception ex)
@@ -476,10 +492,12 @@ namespace Arma_3_LTRM.Services
             }
         }
 
-        private void DownloadDirectory(Uri ftpUri, string username, string password, string destinationPath, IProgress<string>? progress)
+        private void DownloadDirectory(Uri ftpUri, string username, string password, string destinationPath, IProgress<string>? progress, CancellationToken cancellationToken = default)
         {
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 if (!Directory.Exists(destinationPath))
                 {
                     Directory.CreateDirectory(destinationPath);
@@ -490,6 +508,8 @@ namespace Arma_3_LTRM.Services
 
                 foreach (var item in items)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    
                     if (item.Name == "." || item.Name == "..")
                         continue;
 
@@ -499,14 +519,14 @@ namespace Arma_3_LTRM.Services
                     if (item.IsDirectory)
                     {
                         progress?.Report($"Entering directory: {item.Name}");
-                        DownloadDirectory(new Uri(itemUri.ToString() + "/"), username, password, localPath, progress);
+                        DownloadDirectory(new Uri(itemUri.ToString() + "/"), username, password, localPath, progress, cancellationToken);
                     }
                     else
                     {
                         if (ShouldDownloadFile(localPath, item.Size, item.LastModified))
                         {
-                            progress?.Report($"Downloading file: {item.Name} ({FormatFileSize(item.Size)})");
-                            DownloadFileWithProgress(itemUri, username, password, localPath, item.Size, item.LastModified, progress);
+                            progress?.Report($"Downloading file: {item.Name} => {localPath} ({FormatFileSize(item.Size)})");
+                            DownloadFileWithProgress(itemUri, username, password, localPath, item.Size, item.LastModified, progress, cancellationToken);
                             _downloadedFiles++;
                         }
                         else
@@ -516,6 +536,11 @@ namespace Arma_3_LTRM.Services
                         }
                     }
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                progress?.Report("Download cancelled.");
+                throw;
             }
             catch (Exception ex)
             {
@@ -692,10 +717,12 @@ namespace Arma_3_LTRM.Services
             }
         }
 
-        private void DownloadFileWithProgress(Uri ftpUri, string username, string password, string destinationPath, long fileSize, DateTime remoteTimestamp, IProgress<string>? progress)
+        private void DownloadFileWithProgress(Uri ftpUri, string username, string password, string destinationPath, long fileSize, DateTime remoteTimestamp, IProgress<string>? progress, CancellationToken cancellationToken = default)
         {
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 var request = (FtpWebRequest)WebRequest.Create(ftpUri);
                 request.Method = WebRequestMethods.Ftp.DownloadFile;
                 request.Credentials = new NetworkCredential(username, password);
@@ -713,6 +740,7 @@ namespace Arma_3_LTRM.Services
 
                 while ((bytesRead = responseStream.Read(buffer, 0, buffer.Length)) > 0)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     fileStream.Write(buffer, 0, bytesRead);
                     totalBytesRead += bytesRead;
                 }
@@ -723,6 +751,17 @@ namespace Arma_3_LTRM.Services
                 {
                     File.SetLastWriteTime(destinationPath, remoteTimestamp);
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                // Clean up partial file on cancellation
+                try
+                {
+                    if (File.Exists(destinationPath))
+                        File.Delete(destinationPath);
+                }
+                catch { }
+                throw;
             }
             catch (Exception ex)
             {
@@ -818,7 +857,7 @@ namespace Arma_3_LTRM.Services
 
         public async Task DownloadFolderAsync(string ftpUrl, int port, string username, string password, string remotePath, string localPath, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
         {
-            await Task.Run(() =>
+            await Task.Run(async () =>
             {
                 try
                 {
@@ -837,7 +876,7 @@ namespace Arma_3_LTRM.Services
                     progress?.Report($"Cache built. Found {cache.Cache.Values.Sum(x => x.Count(i => !i.IsDirectory))} files.");
                     progress?.Report($"Downloading folder: {remotePath}");
                     
-                    DownloadDirectoryFromCache(cache, remotePath, username, password, localPath, ftpUrl, port, progress, cancellationToken);
+                    await DownloadDirectoryFromCache(cache, remotePath, username, password, localPath, ftpUrl, port, progress, cancellationToken);
                     
                     progress?.Report($"Folder download completed: {_downloadedFiles} files downloaded, {_skippedFiles} files up-to-date");
                 }
