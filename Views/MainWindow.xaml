@@ -19,6 +19,7 @@ Background="#1E1E1E">
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="8"/>
             <Setter Property="FontSize" Value="14"/>
+            <Setter Property="MinHeight" Value="32"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBox">
@@ -327,31 +328,50 @@ Background="#1E1E1E">
             <Setter Property="Foreground" Value="#E0E0E0"/>
             <Setter Property="FontSize" Value="14"/>
         </Style>
-        <Style TargetType="Button" x:Key="ActionButton">
+        <!-- Default Button Style -->
+        <Style TargetType="Button">
             <Setter Property="Background" Value="#0E639C"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="20,10"/>
-            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="FontSize" Value="13"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="MinWidth" Value="80"/>
+            <Setter Property="MinHeight" Value="28"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="3">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Border x:Name="border" 
+                                Background="{TemplateBinding Background}" 
+                                CornerRadius="3"
+                                BorderThickness="0">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"
+                                            Margin="{TemplateBinding Padding}"/>
                         </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#1177BB"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#0D5A8F"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Background" Value="#3F3F46"/>
+                                <Setter Property="Foreground" Value="#808080"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#1177BB"/>
-                </Trigger>
-                <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Background" Value="#3F3F46"/>
-                    <Setter Property="Foreground" Value="#808080"/>
-                </Trigger>
-            </Style.Triggers>
+        </Style>
+
+        <!-- Large Action Button (for main actions) -->
+        <Style TargetType="Button" x:Key="ActionButton" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Padding" Value="20,10"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="MinWidth" Value="120"/>
+            <Setter Property="MinHeight" Value="36"/>
         </Style>
         <Style TargetType="ListBox">
             <Setter Property="Background" Value="#252526"/>
@@ -408,49 +428,15 @@ Background="#1E1E1E">
                 </Trigger>
             </Style.Triggers>
         </Style>
-        <Style TargetType="Button" x:Key="EditButton">
-            <Setter Property="Background" Value="#0E639C"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="12,6"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="MinWidth" Value="70"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="3">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#1177BB"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-        <Style TargetType="Button" x:Key="DeleteButton">
+        <!-- Delete Button (red variant) -->
+        <Style TargetType="Button" x:Key="DeleteButton" BasedOn="{StaticResource {x:Type Button}}">
             <Setter Property="Background" Value="#B73A3A"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="12,6"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="MinWidth" Value="70"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="3">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="#D84848"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#A03333"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -480,8 +466,7 @@ Background="#1E1E1E">
                     <StackPanel Grid.Row="0" Grid.Column="0">
                         <TextBlock Text="REPOSITORIES" FontSize="18" FontWeight="Bold" Margin="0,0,0,15"/>
 
-                        <ListBox x:Name="RepositoriesListBox" Margin="0,0,0,15"
-                                 SelectionMode="Single">
+                        <ListBox x:Name="RepositoriesListBox" Margin="0,0,0,15">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <Grid Margin="5">
@@ -501,12 +486,10 @@ Background="#1E1E1E">
                                             <TextBlock Text="{Binding Url}" Foreground="#999" FontSize="12"/>
                                         </StackPanel>
                                         <Button Grid.Column="3" Content="⬇ Download" 
-                                                Style="{StaticResource EditButton}"
                                                 Click="DownloadRepositoryItem_Click"
                                                 Tag="{Binding}"
                                                 Margin="10,0,0,0"
                                                 VerticalAlignment="Center"
-                                                Padding="10,5"
                                                 MinWidth="100"/>
                                     </Grid>
                                 </DataTemplate>
@@ -524,8 +507,7 @@ Background="#1E1E1E">
                     <StackPanel Grid.Row="0" Grid.Column="2">
                         <TextBlock Text="EVENTS" FontSize="18" FontWeight="Bold" Margin="0,0,0,15"/>
 
-                        <ListBox x:Name="EventsListBox" Margin="0,0,0,15"
-                                 SelectionMode="Single">
+                        <ListBox x:Name="EventsListBox" Margin="0,0,0,15">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <Grid Margin="5">
@@ -548,12 +530,10 @@ Background="#1E1E1E">
                                             </TextBlock>
                                         </StackPanel>
                                         <Button Grid.Column="3" Content="⬇ Download" 
-                                                Style="{StaticResource EditButton}"
                                                 Click="DownloadEventItem_Click"
                                                 Tag="{Binding}"
                                                 Margin="10,0,0,0"
                                                 VerticalAlignment="Center"
-                                                Padding="10,5"
                                                 MinWidth="100"/>
                                     </Grid>
                                 </DataTemplate>
@@ -571,8 +551,7 @@ Background="#1E1E1E">
                     <StackPanel Grid.Row="0" Grid.Column="4">
                         <TextBlock Text="SERVERS" FontSize="18" FontWeight="Bold" Margin="0,0,0,15"/>
 
-                        <ListBox x:Name="ServersListBox" Margin="0,0,0,15"
-                                 SelectionMode="Single">
+                        <ListBox x:Name="ServersListBox" Margin="0,0,0,15">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <Grid Margin="5">
@@ -652,14 +631,16 @@ Background="#1E1E1E">
                             <DataGridTextColumn Header="URL" Binding="{Binding Url}" Width="2*"/>
                             <DataGridTextColumn Header="Port" Binding="{Binding Port}" Width="*"/>
                             <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="1.5*"/>
-                            <DataGridTemplateColumn Header="Actions" Width="180">
+                            <DataGridTemplateColumn Header="Actions" Width="200">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                            <Button Content="Edit" Style="{StaticResource EditButton}"
-                                                    Click="EditRepository_Click" Tag="{Binding}" Margin="0,0,8,0"/>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,10,0">
+                                            <Button Content="Edit"
+                                                    Click="EditRepository_Click" Tag="{Binding}" 
+                                                    VerticalAlignment="Center" Margin="0,0,8,0"/>
                                             <Button Content="Remove" Style="{StaticResource DeleteButton}"
-                                                    Click="DeleteRepository_Click" Tag="{Binding}"/>
+                                                    Click="DeleteRepository_Click" Tag="{Binding}"
+                                                    VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -690,14 +671,16 @@ Background="#1E1E1E">
                                     <Binding Path="ModFolders.Count" StringFormat="{}{0} mod folder(s)"/>
                                 </DataGridTextColumn.Binding>
                             </DataGridTextColumn>
-                            <DataGridTemplateColumn Header="Actions" Width="180">
+                            <DataGridTemplateColumn Header="Actions" Width="200">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                            <Button Content="Edit" Style="{StaticResource EditButton}"
-                                                    Click="EditEvent_Click" Tag="{Binding}" Margin="0,0,8,0"/>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,10,0">
+                                            <Button Content="Edit"
+                                                    Click="EditEvent_Click" Tag="{Binding}" 
+                                                    VerticalAlignment="Center" Margin="0,0,8,0"/>
                                             <Button Content="Remove" Style="{StaticResource DeleteButton}"
-                                                    Click="DeleteEvent_Click" Tag="{Binding}"/>
+                                                    Click="DeleteEvent_Click" Tag="{Binding}"
+                                                    VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -730,14 +713,16 @@ Background="#1E1E1E">
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="Actions" Width="180">
+                            <DataGridTemplateColumn Header="Actions" Width="200">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                            <Button Content="Edit" Style="{StaticResource EditButton}"
-                                                    Click="EditServer_Click" Tag="{Binding}" Margin="0,0,8,0"/>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,10,0">
+                                            <Button Content="Edit"
+                                                    Click="EditServer_Click" Tag="{Binding}" 
+                                                    VerticalAlignment="Center" Margin="0,0,8,0"/>
                                             <Button Content="Remove" Style="{StaticResource DeleteButton}"
-                                                    Click="DeleteServer_Click" Tag="{Binding}"/>
+                                                    Click="DeleteServer_Click" Tag="{Binding}"
+                                                    VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>

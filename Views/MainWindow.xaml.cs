@@ -491,10 +491,10 @@ namespace Arma_3_LTRM.Views
 
         private async void DownloadLaunchRepository_Click(object sender, RoutedEventArgs e)
         {
-            var selectedRepos = RepositoriesListBox.SelectedItems.Cast<Repository>().ToList();
+            var selectedRepos = _repositoryManager.Repositories.Where(r => r.IsChecked).ToList();
             if (selectedRepos.Count == 0)
             {
-                MessageBox.Show("Please select at least one repository.", "No Selection", 
+                MessageBox.Show("Please check at least one repository.", "No Selection", 
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
@@ -533,10 +533,10 @@ namespace Arma_3_LTRM.Views
 
         private async void DownloadRepository_Click(object sender, RoutedEventArgs e)
         {
-            var selectedRepos = RepositoriesListBox.SelectedItems.Cast<Repository>().ToList();
+            var selectedRepos = _repositoryManager.Repositories.Where(r => r.IsChecked).ToList();
             if (selectedRepos.Count == 0)
             {
-                MessageBox.Show("Please select at least one repository.", "No Selection", 
+                MessageBox.Show("Please check at least one repository.", "No Selection", 
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
@@ -563,10 +563,10 @@ namespace Arma_3_LTRM.Views
 
         private void LaunchRepository_Click(object sender, RoutedEventArgs e)
         {
-            var selectedRepos = RepositoriesListBox.SelectedItems.Cast<Repository>().ToList();
+            var selectedRepos = _repositoryManager.Repositories.Where(r => r.IsChecked).ToList();
             if (selectedRepos.Count == 0)
             {
-                MessageBox.Show("Please select at least one repository.", "No Selection", 
+                MessageBox.Show("Please check at least one repository.", "No Selection", 
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
