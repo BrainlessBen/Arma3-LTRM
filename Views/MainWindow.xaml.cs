@@ -341,6 +341,8 @@ namespace Arma_3_LTRM.Views
             if (dialog.ShowDialog() == true)
             {
                 SettingsArma3PathTextBox.Text = dialog.FileName;
+                _settingsManager.Settings.Arma3ExePath = dialog.FileName;
+                _settingsManager.SaveSettings();
             }
         }
 
@@ -356,6 +358,8 @@ namespace Arma_3_LTRM.Views
                 if (!_downloadLocations.Contains(dialog.FolderName))
                 {
                     _downloadLocations.Add(dialog.FolderName);
+                    _settingsManager.Settings.BaseDownloadLocations = _downloadLocations.ToList();
+                    _settingsManager.SaveSettings();
                 }
                 else
                 {
@@ -377,6 +381,8 @@ namespace Arma_3_LTRM.Views
                 }
                 
                 _downloadLocations.Remove(selectedLocation);
+                _settingsManager.Settings.BaseDownloadLocations = _downloadLocations.ToList();
+                _settingsManager.SaveSettings();
             }
         }
 
@@ -389,6 +395,8 @@ namespace Arma_3_LTRM.Views
                 _downloadLocations.RemoveAt(selectedIndex);
                 _downloadLocations.Insert(selectedIndex - 1, item);
                 SettingsDownloadLocationsListBox.SelectedIndex = selectedIndex - 1;
+                _settingsManager.Settings.BaseDownloadLocations = _downloadLocations.ToList();
+                _settingsManager.SaveSettings();
             }
         }
 
@@ -401,16 +409,9 @@ namespace Arma_3_LTRM.Views
                 _downloadLocations.RemoveAt(selectedIndex);
                 _downloadLocations.Insert(selectedIndex + 1, item);
                 SettingsDownloadLocationsListBox.SelectedIndex = selectedIndex + 1;
+                _settingsManager.Settings.BaseDownloadLocations = _downloadLocations.ToList();
+                _settingsManager.SaveSettings();
             }
-        }
-
-        private void SettingsSave_Click(object sender, RoutedEventArgs e)
-        {
-            _settingsManager.Settings.Arma3ExePath = SettingsArma3PathTextBox.Text;
-            _settingsManager.Settings.BaseDownloadLocations = _downloadLocations.ToList();
-            _settingsManager.SaveSettings();
-            MessageBox.Show("Settings saved successfully!", "Settings Saved", 
-                MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void BrowseMission_Click(object sender, RoutedEventArgs e)
@@ -492,8 +493,7 @@ namespace Arma_3_LTRM.Views
             var downloadPaths = new List<string>();
             foreach (var repo in selectedRepos)
             {
-                var repoPath = Path.Combine(selectedLocation, "Repositories", repo.Name);
-                downloadPaths.Add(repoPath);
+                downloadPaths.Add(selectedLocation);
 
                 var progressWindow = new DownloadProgressWindow();
                 progressWindow.Owner = this;
@@ -501,7 +501,7 @@ namespace Arma_3_LTRM.Views
                 var progress = new Progress<string>(message => progressWindow.AppendLog(message));
 
                 progressWindow.Show();
-                var success = await _ftpManager.DownloadRepositoryAsync(repo, repoPath, progress);
+                var success = await _ftpManager.DownloadRepositoryAsync(repo, selectedLocation, progress);
                 progressWindow.Close();
 
                 if (!success)
@@ -748,6 +748,97 @@ namespace Arma_3_LTRM.Views
                 }
 
                 LaunchArma3WithEvent(evt, foundPath);
+            }
+        }
+
+        private async void DownloadRepositoryItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is Repository repo)
+            {
+                var selectedLocation = SelectDownloadLocation();
+                if (selectedLocation == null)
+                    return;
+
+                var repoPath = Path.Combine(selectedLocation, "Repositories", repo.Name);
+
+                var progressWindow = new DownloadProgressWindow();
+                progressWindow.Owner = this;
+
+                var progress = new Progress<string>(message => progressWindow.AppendLog(message));
+
+                progressWindow.Show();
+                await _ftpManager.DownloadRepositoryAsync(repo, repoPath, progress, progressWindow.CancellationToken);
+                progressWindow.MarkCompleted();
+
+                MessageBox.Show($"Repository '{repo.Name}' download completed!", "Download Complete", 
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        private async void DownloadEventItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is Event evt)
+            {
+                var selectedLocation = SelectDownloadLocation();
+                if (selectedLocation == null)
+                    return;
+
+                var progressWindow = new DownloadProgressWindow();
+                progressWindow.Owner = this;
+                var progress = new Progress<string>(message => progressWindow.AppendLog(message));
+                progressWindow.Show();
+
+                try
+                {
+                    foreach (var modFolder in evt.ModFolders)
+                    {
+                        // Skip DLC and Workshop items - they don't need to be downloaded
+                        if (modFolder.ItemType == ModItemType.DLC)
+                        {
+                            ((IProgress<string>)progress).Report($"Skipping DLC: {modFolder.FolderPath}");
+                            continue;
+                        }
+                        if (modFolder.ItemType == ModItemType.Workshop)
+                        {
+                            ((IProgress<string>)progress).Report($"Skipping Workshop Item: {modFolder.FolderPath}");
+                            continue;
+                        }
+
+                        var repository = evt.Repositories.FirstOrDefault(r => r.Id == modFolder.RepositoryId);
+                        if (repository == null)
+                        {
+                            progressWindow.Close();
+                            MessageBox.Show($"Repository not found for folder '{modFolder.FolderPath}'.\n\nPlease check your repository configuration.", 
+                                "Repository Not Found", MessageBoxButton.OK, MessageBoxImage.Error);
+                            return;
+                        }
+
+                        // Maintain full folder structure from FTP path
+                        // e.g., /mods/xyz/@ACE becomes eventBasePath/mods/xyz/@ACE
+                        var relativePath = modFolder.FolderPath.TrimStart('/');
+                        var localPath = Path.Combine(selectedLocation, relativePath);
+                        
+                        await _ftpManager.DownloadFolderAsync(
+                            repository.Url,
+                            repository.Port,
+                            repository.Username,
+                            repository.Password,
+                            modFolder.FolderPath,
+                            localPath,
+                            progress,
+                            progressWindow.CancellationToken
+                        );
+                    }
+
+                    progressWindow.MarkCompleted();
+                    MessageBox.Show($"Event '{evt.Name}' download completed!", "Download Complete", 
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (OperationCanceledException)
+                {
+                    progressWindow.Close();
+                    ((IProgress<string>)progress).Report("Download cancelled by user.");
+                }
             }
         }
 

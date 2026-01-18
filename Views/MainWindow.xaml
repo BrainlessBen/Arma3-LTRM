@@ -218,16 +218,25 @@ Background="#1E1E1E">
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <CheckBox Grid.Column="0" IsChecked="{Binding IsChecked}" 
                                                   VerticalAlignment="Center" Margin="0,0,10,0"
                                                   Checked="RepositoryCheckBox_Changed" 
                                                   Unchecked="RepositoryCheckBox_Changed"/>
-                                        <TextBlock Grid.Column="1" Text="📦" FontSize="20" Margin="0,0,10,0"/>
-                                        <StackPanel Grid.Column="2">
+                                        <TextBlock Grid.Column="1" Text="📦" FontSize="20" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="2" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="16"/>
                                             <TextBlock Text="{Binding Url}" Foreground="#999" FontSize="12"/>
                                         </StackPanel>
+                                        <Button Grid.Column="3" Content="⬇ Download" 
+                                                Style="{StaticResource EditButton}"
+                                                Click="DownloadRepositoryItem_Click"
+                                                Tag="{Binding}"
+                                                Margin="10,0,0,0"
+                                                VerticalAlignment="Center"
+                                                Padding="10,5"
+                                                MinWidth="100"/>
                                     </Grid>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
@@ -236,8 +245,6 @@ Background="#1E1E1E">
                         <StackPanel>
                             <Button Style="{StaticResource ActionButton}" Content="Download &amp; Launch Repository" 
                                     Click="DownloadLaunchRepository_Click" Margin="0,0,0,10" Height="45"/>
-                            <Button Style="{StaticResource ActionButton}" Content="Download Repository" 
-                                    Click="DownloadRepository_Click" Margin="0,0,0,10" Height="45"/>
                             <Button Style="{StaticResource ActionButton}" Content="Launch with Repository" 
                                     Click="LaunchRepository_Click" Height="45"/>
                         </StackPanel>
@@ -255,19 +262,28 @@ Background="#1E1E1E">
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <CheckBox Grid.Column="0" IsChecked="{Binding IsChecked}" 
                                                   VerticalAlignment="Center" Margin="0,0,10,0"
                                                   Checked="EventCheckBox_Changed" 
                                                   Unchecked="EventCheckBox_Changed"/>
-                                        <TextBlock Grid.Column="1" Text="📅" FontSize="20" Margin="0,0,10,0"/>
-                                        <StackPanel Grid.Column="2">
+                                        <TextBlock Grid.Column="1" Text="📅" FontSize="20" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="2" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="16"/>
                                             <TextBlock Foreground="#999" FontSize="12">
                                                 <Run Text="{Binding ModFolders.Count, Mode=OneWay}"/>
                                                 <Run Text=" mod folder(s)"/>
                                             </TextBlock>
                                         </StackPanel>
+                                        <Button Grid.Column="3" Content="⬇ Download" 
+                                                Style="{StaticResource EditButton}"
+                                                Click="DownloadEventItem_Click"
+                                                Tag="{Binding}"
+                                                Margin="10,0,0,0"
+                                                VerticalAlignment="Center"
+                                                Padding="10,5"
+                                                MinWidth="100"/>
                                     </Grid>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
@@ -276,8 +292,6 @@ Background="#1E1E1E">
                         <StackPanel>
                             <Button Style="{StaticResource ActionButton}" Content="Download &amp; Launch Event" 
                                     Click="DownloadLaunchEvent_Click" Margin="0,0,0,10" Height="45"/>
-                            <Button Style="{StaticResource ActionButton}" Content="Download Event" 
-                                    Click="DownloadEvent_Click" Margin="0,0,0,10" Height="45"/>
                             <Button Style="{StaticResource ActionButton}" Content="Launch with Event" 
                                     Click="LaunchEvent_Click" Height="45"/>
                         </StackPanel>
@@ -706,11 +720,6 @@ Background="#1E1E1E">
                                         Style="{StaticResource ActionButton}" Click="SettingsMoveDownButton_Click"/>
                             </StackPanel>
                         </Grid>
-                    </StackPanel>
-
-                    <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button x:Name="SettingsSaveButton" Content="Save Settings" Width="150" 
-                                Style="{StaticResource ActionButton}" Click="SettingsSave_Click"/>
                     </StackPanel>
                 </Grid>
             </TabItem>
