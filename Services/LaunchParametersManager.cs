@@ -1,40 +1,57 @@
 ﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
+using Arma_3_LTRM.Models;
 
 namespace Arma_3_LTRM.Services
 {
     public class LaunchParametersManager
     {
-        private readonly Dictionary<string, bool> _parameters = new Dictionary<string, bool>();
         private readonly List<string> _modPaths = new List<string>();
+        private LaunchParameters _launchParameters;
 
         public event EventHandler? ParametersChanged;
 
-        public LaunchParametersManager()
+        public LaunchParameters LaunchParameters
         {
-            _parameters["windowed"] = false;
-            _parameters["world"] = false;
-            _parameters["skipIntro"] = false;
-            _parameters["nosplash"] = false;
-            _parameters["noPause"] = false;
-            _parameters["noPauseAudio"] = false;
-            _parameters["noLogs"] = false;
-            _parameters["showScriptErrors"] = false;
-            _parameters["filePatching"] = false;
-        } 
-
-        public Dictionary<string, bool> GetPredefinedParameters()
-        {
-            return new Dictionary<string, bool>(_parameters);
+            get => _launchParameters;
+            set
+            {
+                _launchParameters = value;
+                _launchParameters.PropertyChanged += (s, e) => OnParametersChanged();
+            }
         }
 
-        public void SetParameter(string parameterName, bool enabled)
+        public LaunchParametersManager()
         {
-            if (_parameters.ContainsKey(parameterName))
+            _launchParameters = new LaunchParameters();
+            _launchParameters.PropertyChanged += (s, e) => OnParametersChanged();
+        }
+
+        public ObservableCollection<string> GetAvailableProfiles()
+        {
+            var profiles = new ObservableCollection<string>();
+            var userName = Environment.UserName;
+            
+            var defaultProfilePath = Path.Combine("C:\\Users", userName, "Documents", "Arma 3");
+            var otherProfilesPath = Path.Combine("C:\\Users", userName, "Documents", "Arma 3 - Other Profiles");
+
+            if (Directory.Exists(defaultProfilePath))
             {
-                _parameters[parameterName] = enabled;
-                OnParametersChanged();
-            } 
+                profiles.Add(defaultProfilePath);
+            }
+
+            if (Directory.Exists(otherProfilesPath))
+            {
+                var directories = Directory.GetDirectories(otherProfilesPath);
+                foreach (var dir in directories)
+                {
+                    profiles.Add(dir);
+                }
+            }
+
+            return profiles;
         }
 
         public void UpdateModsList(List<string> modPaths)
@@ -48,9 +65,90 @@ namespace Arma_3_LTRM.Services
         {
             var parameters = new List<string>();
 
-            foreach (var param in _parameters.Where(p => p.Value))
+            if (!string.IsNullOrWhiteSpace(_launchParameters.ProfilePath))
             {
-                parameters.Add($"-{param.Key}");
+                parameters.Add($"-profiles=\"{_launchParameters.ProfilePath}\"");
+            }
+
+            if (!string.IsNullOrWhiteSpace(_launchParameters.Unit))
+            {
+                parameters.Add($"-unit={_launchParameters.Unit}");
+            }
+
+            if (_launchParameters.UseMission && !string.IsNullOrWhiteSpace(_launchParameters.MissionPath))
+            {
+                parameters.Add($"\"{_launchParameters.MissionPath}\"");
+            }
+
+            if (_launchParameters.Windowed)
+            {
+                parameters.Add("-window");
+                parameters.Add("-noWindowBorder");
+            }
+
+            if (_launchParameters.NoSplash)
+            {
+                parameters.Add("-nosplash");
+            }
+
+            if (_launchParameters.SkipIntro)
+            {
+                parameters.Add("-skipIntro");
+            }
+
+            if (_launchParameters.EmptyWorld)
+            {
+                parameters.Add("-world=empty");
+            }
+
+            if (_launchParameters.EnableHT)
+            {
+                parameters.Add("-enableHT");
+            }
+
+            if (_launchParameters.ShowScriptErrors)
+            {
+                parameters.Add("-showScriptErrors");
+            }
+
+            if (_launchParameters.NoPause)
+            {
+                parameters.Add("-noPause");
+            }
+
+            if (_launchParameters.NoPauseAudio)
+            {
+                parameters.Add("-noPauseAudio");
+            }
+
+            if (_launchParameters.NoLogs)
+            {
+                parameters.Add("-noLogs");
+            }
+
+            if (_launchParameters.NoFreezeCheck)
+            {
+                parameters.Add("-noFreezeCheck");
+            }
+
+            if (_launchParameters.NoFilePatching)
+            {
+                parameters.Add("-noFilePatching");
+            }
+
+            if (_launchParameters.Debug)
+            {
+                parameters.Add("-debug");
+            }
+
+            if (!string.IsNullOrWhiteSpace(_launchParameters.Config))
+            {
+                parameters.Add($"-config=\"{_launchParameters.Config}\"");
+            }
+
+            if (!string.IsNullOrWhiteSpace(_launchParameters.BePath))
+            {
+                parameters.Add($"-bePath=\"{_launchParameters.BePath}\"");
             }
 
             if (!string.IsNullOrWhiteSpace(customParameters))
@@ -75,7 +173,7 @@ namespace Arma_3_LTRM.Services
 
             foreach (var modPath in _modPaths)
             {
-                parameters.Add($"-mod={modPath}");
+                parameters.Add($"-mod=\"{modPath}\"");
             }
 
             return string.Join(Environment.NewLine, parameters);

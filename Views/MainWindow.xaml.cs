@@ -23,6 +23,7 @@ namespace Arma_3_LTRM.Views
         private readonly FtpManager _ftpManager;
         private readonly LaunchParametersManager _launchParametersManager;
         private ObservableCollection<string> _downloadLocations;
+        private bool _isUpdatingParameters = false;
 
         public MainWindow()
         {
@@ -35,6 +36,7 @@ namespace Arma_3_LTRM.Views
             _settingsManager = new SettingsManager();
             _ftpManager = new FtpManager();
             _launchParametersManager = new LaunchParametersManager();
+            _launchParametersManager.ParametersChanged += (s, e) => UpdateParametersDisplay();
             _downloadLocations = new ObservableCollection<string>();
 
             LoadData();
@@ -72,48 +74,85 @@ namespace Arma_3_LTRM.Views
 
         private void InitializeParametersUI()
         {
-            // Create checkboxes for predefined parameters
-            var predefinedParams = _launchParametersManager.GetPredefinedParameters();
-            var paramDescriptions = new Dictionary<string, string>
-            {
-                { "windowed", "Windowed - Run in windowed mode" },
-                { "world", "World - Show empty world" },
-                { "skipIntro", "Skip Intro - Skip intro videos" },
-                { "nosplash", "No Splash - Skip splash screens" },
-                { "noPause", "No Pause - Don't pause when window loses focus" },
-                { "noPauseAudio", "No Pause Audio - Don't pause audio when window loses focus" },
-                { "noLogs", "No Logs - Don't create RPT log files" },
-                { "showScriptErrors", "Show Script Errors - Show script errors" },
-                { "filePatching", "File Patching - Enable file patching" }
-            };
-
-            PredefinedParametersPanel.Children.Clear();
-            foreach (var param in predefinedParams.OrderBy(p => p.Key))
-            {
-                var checkBox = new System.Windows.Controls.CheckBox
-                {
-                    Content = paramDescriptions.ContainsKey(param.Key) ? paramDescriptions[param.Key] : param.Key,
-                    IsChecked = param.Value,
-                    Tag = param.Key,
-                    Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xE0, 0xE0, 0xE0)),
-                    FontSize = 14,
-                    Margin = new Thickness(0, 0, 0, 10)
-                };
-                checkBox.Checked += ParameterCheckBox_Changed;
-                checkBox.Unchecked += ParameterCheckBox_Changed;
-                PredefinedParametersPanel.Children.Add(checkBox);
-            }
-
+            // Load available profiles
+            ProfileComboBox.ItemsSource = _launchParametersManager.GetAvailableProfiles();
+            
+            // Bind controls to LaunchParameters model
+            ProfileComboBox.DataContext = _launchParametersManager.LaunchParameters;
+            UnitTextBox.DataContext = _launchParametersManager.LaunchParameters;
+            UseMissionCheckBox.DataContext = _launchParametersManager.LaunchParameters;
+            MissionPathTextBox.DataContext = _launchParametersManager.LaunchParameters;
+            WindowedCheckBox.DataContext = _launchParametersManager.LaunchParameters;
+            NoSplashCheckBox.DataContext = _launchParametersManager.LaunchParameters;
+            SkipIntroCheckBox.DataContext = _launchParametersManager.LaunchParameters;
+            EmptyWorldCheckBox.DataContext = _launchParametersManager.LaunchParameters;
+            EnableHTCheckBox.DataContext = _launchParametersManager.LaunchParameters;
+            ShowScriptErrorsCheckBox.DataContext = _launchParametersManager.LaunchParameters;
+            NoPauseCheckBox.DataContext = _launchParametersManager.LaunchParameters;
+            NoPauseAudioCheckBox.DataContext = _launchParametersManager.LaunchParameters;
+            NoLogsCheckBox.DataContext = _launchParametersManager.LaunchParameters;
+            NoFreezeCheckCheckBox.DataContext = _launchParametersManager.LaunchParameters;
+            NoFilePatchingCheckBox.DataContext = _launchParametersManager.LaunchParameters;
+            DebugCheckBox.DataContext = _launchParametersManager.LaunchParameters;
+            ConfigTextBox.DataContext = _launchParametersManager.LaunchParameters;
+            BePathTextBox.DataContext = _launchParametersManager.LaunchParameters;
+            
+            // Set up bindings
+            var profileBinding = new System.Windows.Data.Binding("ProfilePath") { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged };
+            ProfileComboBox.SetBinding(System.Windows.Controls.ComboBox.SelectedItemProperty, profileBinding);
+            
+            var unitBinding = new System.Windows.Data.Binding("Unit") { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged };
+            UnitTextBox.SetBinding(System.Windows.Controls.TextBox.TextProperty, unitBinding);
+            
+            var useMissionBinding = new System.Windows.Data.Binding("UseMission") { Mode = BindingMode.TwoWay };
+            UseMissionCheckBox.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, useMissionBinding);
+            
+            var missionPathBinding = new System.Windows.Data.Binding("MissionPath") { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged };
+            MissionPathTextBox.SetBinding(System.Windows.Controls.TextBox.TextProperty, missionPathBinding);
+            
+            var windowedBinding = new System.Windows.Data.Binding("Windowed") { Mode = BindingMode.TwoWay };
+            WindowedCheckBox.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, windowedBinding);
+            
+            var noSplashBinding = new System.Windows.Data.Binding("NoSplash") { Mode = BindingMode.TwoWay };
+            NoSplashCheckBox.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, noSplashBinding);
+            
+            var skipIntroBinding = new System.Windows.Data.Binding("SkipIntro") { Mode = BindingMode.TwoWay };
+            SkipIntroCheckBox.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, skipIntroBinding);
+            
+            var emptyWorldBinding = new System.Windows.Data.Binding("EmptyWorld") { Mode = BindingMode.TwoWay };
+            EmptyWorldCheckBox.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, emptyWorldBinding);
+            
+            var enableHTBinding = new System.Windows.Data.Binding("EnableHT") { Mode = BindingMode.TwoWay };
+            EnableHTCheckBox.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, enableHTBinding);
+            
+            var showScriptErrorsBinding = new System.Windows.Data.Binding("ShowScriptErrors") { Mode = BindingMode.TwoWay };
+            ShowScriptErrorsCheckBox.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, showScriptErrorsBinding);
+            
+            var noPauseBinding = new System.Windows.Data.Binding("NoPause") { Mode = BindingMode.TwoWay };
+            NoPauseCheckBox.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, noPauseBinding);
+            
+            var noPauseAudioBinding = new System.Windows.Data.Binding("NoPauseAudio") { Mode = BindingMode.TwoWay };
+            NoPauseAudioCheckBox.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, noPauseAudioBinding);
+            
+            var noLogsBinding = new System.Windows.Data.Binding("NoLogs") { Mode = BindingMode.TwoWay };
+            NoLogsCheckBox.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, noLogsBinding);
+            
+            var noFreezeCheckBinding = new System.Windows.Data.Binding("NoFreezeCheck") { Mode = BindingMode.TwoWay };
+            NoFreezeCheckCheckBox.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, noFreezeCheckBinding);
+            
+            var noFilePatchingBinding = new System.Windows.Data.Binding("NoFilePatching") { Mode = BindingMode.TwoWay };
+            NoFilePatchingCheckBox.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, noFilePatchingBinding);
+            
+            var debugBinding = new System.Windows.Data.Binding("Debug") { Mode = BindingMode.TwoWay };
+            DebugCheckBox.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, debugBinding);
+            
+            var configBinding = new System.Windows.Data.Binding("Config") { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged };
+            ConfigTextBox.SetBinding(System.Windows.Controls.TextBox.TextProperty, configBinding);
+            
+            var bePathBinding = new System.Windows.Data.Binding("BePath") { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged };
+            BePathTextBox.SetBinding(System.Windows.Controls.TextBox.TextProperty, bePathBinding);
+            
             UpdateParametersDisplay();
-        }
-
-        private void ParameterCheckBox_Changed(object sender, RoutedEventArgs e)
-        {
-            if (sender is System.Windows.Controls.CheckBox checkBox && checkBox.Tag is string paramName)
-            {
-                _launchParametersManager.SetParameter(paramName, checkBox.IsChecked == true);
-                UpdateParametersDisplay();
-            }
         }
 
         private void CustomParametersTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
@@ -168,98 +207,117 @@ namespace Arma_3_LTRM.Views
 
         private void UpdateParametersDisplay()
         {
-            // Get mod folders from checked repositories and events
-            var modFolders = new List<string>();
-
-            var checkedRepos = _repositoryManager.Repositories.Where(r => r.IsChecked).ToList();
-            var checkedEvents = _eventManager.Events.Where(e => e.IsChecked).ToList();
-
-            // If repositories are checked, find their mod folders in download locations
-            foreach (var repo in checkedRepos)
-            {
-                var repoPath = FindRepositoryInLocations(repo.Name);
-                if (repoPath != null && Directory.Exists(repoPath))
-                {
-                    var directories = Directory.GetDirectories(repoPath, "*", SearchOption.AllDirectories);
-                    foreach (var dir in directories)
-                    {
-                        if (Path.GetFileName(dir).StartsWith("@"))
-                        {
-                            modFolders.Add(dir);
-                        }
-                    }
-                }
-            }
-
-            // If events are checked, get their mod folder paths
-            foreach (var evt in checkedEvents)
-            {
-                var eventPath = FindEventInLocations(evt);
-                if (eventPath != null)
-                {
-                    var arma3Dir = Path.GetDirectoryName(_settingsManager.Settings.Arma3ExePath);
-                    
-                    foreach (var modFolder in evt.ModFolders)
-                    {
-                        if (modFolder.ItemType == ModItemType.DLC && !string.IsNullOrEmpty(arma3Dir))
-                        {
-                            var dlcPath = Path.Combine(arma3Dir, modFolder.FolderPath);
-                            if (Directory.Exists(dlcPath))
-                            {
-                                modFolders.Add(dlcPath);
-                            }
-                        }
-                        else if (modFolder.ItemType == ModItemType.Workshop && !string.IsNullOrEmpty(arma3Dir))
-                        {
-                            var workshopPath = Path.Combine(arma3Dir, "!Workshop", modFolder.FolderPath);
-                            if (Directory.Exists(workshopPath))
-                            {
-                                modFolders.Add(workshopPath);
-                            }
-                        }
-                        else
-                        {
-                            var relativePath = modFolder.FolderPath.TrimStart('/');
-                            var localPath = Path.Combine(eventPath, relativePath);
-                            if (Directory.Exists(localPath))
-                            {
-                                modFolders.Add(localPath);
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Update mod paths in LaunchParametersManager
-            _launchParametersManager.UpdateModsList(modFolders);
-
-            // Get custom parameters and generate final command
-            var customParams = CustomParametersTextBox.Text;
-            var finalParams = _launchParametersManager.GetParametersString(customParams);
+            if (_isUpdatingParameters) return;
             
-            // Add server connection parameters if a server is selected
-            var checkedServer = _serverManager.Servers.FirstOrDefault(s => s.IsChecked);
-            if (checkedServer != null)
+            try
             {
-                var serverParams = $"-connect={checkedServer.Address} -port={checkedServer.Port}";
-                if (!string.IsNullOrWhiteSpace(checkedServer.Password))
+                _isUpdatingParameters = true;
+                
+                // Get mod folders from checked repositories and events
+                var modFolders = new List<string>();
+
+                var checkedRepos = _repositoryManager.Repositories.Where(r => r.IsChecked).ToList();
+                var checkedEvents = _eventManager.Events.Where(e => e.IsChecked).ToList();
+
+                // If repositories are checked, find their mod folders in download locations
+                foreach (var repo in checkedRepos)
                 {
-                    serverParams += $" -password={checkedServer.Password}";
+                    var repoPath = FindRepositoryInLocations(repo.Name);
+                    if (repoPath != null && Directory.Exists(repoPath))
+                    {
+                        var directories = Directory.GetDirectories(repoPath, "*", SearchOption.AllDirectories);
+                        foreach (var dir in directories)
+                        {
+                            if (Path.GetFileName(dir).StartsWith("@"))
+                            {
+                                modFolders.Add(dir);
+                            }
+                        }
+                    }
+                }
+
+                // If events are checked, get their mod folder paths
+                foreach (var evt in checkedEvents)
+                {
+                    var eventPath = FindEventInLocations(evt);
+                    if (eventPath != null)
+                    {
+                        var arma3Dir = Path.GetDirectoryName(_settingsManager.Settings.Arma3ExePath);
+                        
+                        foreach (var modFolder in evt.ModFolders)
+                        {
+                            if (modFolder.ItemType == ModItemType.DLC && !string.IsNullOrEmpty(arma3Dir))
+                            {
+                                var dlcPath = Path.Combine(arma3Dir, modFolder.FolderPath);
+                                if (Directory.Exists(dlcPath))
+                                {
+                                    modFolders.Add(dlcPath);
+                                }
+                            }
+                            else if (modFolder.ItemType == ModItemType.Workshop && !string.IsNullOrEmpty(arma3Dir))
+                            {
+                                var workshopPath = Path.Combine(arma3Dir, "!Workshop", modFolder.FolderPath);
+                                if (Directory.Exists(workshopPath))
+                                {
+                                    modFolders.Add(workshopPath);
+                                }
+                            }
+                            else
+                            {
+                                var relativePath = modFolder.FolderPath.TrimStart('/');
+                                var localPath = Path.Combine(eventPath, relativePath);
+                                if (Directory.Exists(localPath))
+                                {
+                                    modFolders.Add(localPath);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Update mod paths in LaunchParametersManager
+                _launchParametersManager.UpdateModsList(modFolders);
+
+                // Get custom parameters and generate final command
+                var customParams = CustomParametersTextBox.Text;
+                var finalParams = _launchParametersManager.GetParametersString(customParams);
+                
+                // Add server connection parameters if a server is selected
+                var checkedServer = _serverManager.Servers.FirstOrDefault(s => s.IsChecked);
+                if (checkedServer != null)
+                {
+                    var serverParams = $"-connect={checkedServer.Address} -port={checkedServer.Port}";
+                    if (!string.IsNullOrWhiteSpace(checkedServer.Password))
+                    {
+                        serverParams += $" -password={checkedServer.Password}";
+                    }
+                    
+                    if (string.IsNullOrWhiteSpace(finalParams))
+                    {
+                        finalParams = serverParams;
+                    }
+                    else
+                    {
+                        finalParams += " " + serverParams;
+                    }
                 }
                 
+                // Format parameters with each one on a new line
                 if (string.IsNullOrWhiteSpace(finalParams))
                 {
-                    finalParams = serverParams;
+                    FinalParametersTextBox.Text = "(No parameters selected)";
                 }
                 else
                 {
-                    finalParams += Environment.NewLine + serverParams;
+                    // Replace space before each parameter with newline for better readability
+                    var formattedParams = finalParams.Replace(" -", Environment.NewLine + "-");
+                    FinalParametersTextBox.Text = formattedParams;
                 }
             }
-            
-            FinalParametersTextBox.Text = string.IsNullOrWhiteSpace(finalParams) 
-                ? "(No parameters selected)" 
-                : finalParams;
+            finally
+            {
+                _isUpdatingParameters = false;
+            }
         }
 
         private void SettingsBrowseArma3_Click(object sender, RoutedEventArgs e)
@@ -343,6 +401,51 @@ namespace Arma_3_LTRM.Views
             _settingsManager.SaveSettings();
             MessageBox.Show("Settings saved successfully!", "Settings Saved", 
                 MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void BrowseMission_Click(object sender, RoutedEventArgs e)
+        {
+            var userName = Environment.UserName;
+            var defaultPath = Path.Combine("C:\\Users", userName, "Documents", "Arma 3 - Other Profiles");
+            
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "Arma 3 Mission Files|*.sqm|All Files|*.*",
+                Title = "Select Mission File",
+                InitialDirectory = Directory.Exists(defaultPath) ? defaultPath : null
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                MissionPathTextBox.Text = dialog.FileName;
+            }
+        }
+
+        private void BrowseConfig_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "Config Files|*.cfg|All Files|*.*",
+                Title = "Select Server Config File"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                ConfigTextBox.Text = dialog.FileName;
+            }
+        }
+
+        private void BrowseBePath_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new OpenFolderDialog
+            {
+                Title = "Select BattlEye Folder"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                BePathTextBox.Text = dialog.FolderName;
+            }
         }
 
         private void MenuExit_Click(object sender, RoutedEventArgs e)
@@ -465,10 +568,10 @@ namespace Arma_3_LTRM.Views
 
         private async void DownloadLaunchEvent_Click(object sender, RoutedEventArgs e)
         {
-            var selectedEvents = EventsListBox.SelectedItems.Cast<Event>().ToList();
+            var selectedEvents = _eventManager.Events.Where(e => e.IsChecked).ToList();
             if (selectedEvents.Count == 0)
             {
-                MessageBox.Show("Please select at least one event.", "No Selection", 
+                MessageBox.Show("Please check at least one event.", "No Selection", 
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
@@ -536,10 +639,10 @@ namespace Arma_3_LTRM.Views
 
         private async void DownloadEvent_Click(object sender, RoutedEventArgs e)
         {
-            var selectedEvents = EventsListBox.SelectedItems.Cast<Event>().ToList();
+            var selectedEvents = _eventManager.Events.Where(e => e.IsChecked).ToList();
             if (selectedEvents.Count == 0)
             {
-                MessageBox.Show("Please select at least one event.", "No Selection", 
+                MessageBox.Show("Please check at least one event.", "No Selection", 
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
@@ -1052,4 +1155,5 @@ namespace Arma_3_LTRM.Views
         }
     }
 }
+
 
