@@ -531,15 +531,13 @@ namespace Arma_3_LTRM.Views
 
             foreach (var repo in selectedRepos)
             {
-                var repoPath = Path.Combine(selectedLocation, "Repositories", repo.Name);
-
                 var progressWindow = new DownloadProgressWindow();
                 progressWindow.Owner = this;
 
                 var progress = new Progress<string>(message => progressWindow.AppendLog(message));
 
                 progressWindow.Show();
-                await _ftpManager.DownloadRepositoryAsync(repo, repoPath, progress, progressWindow.CancellationToken);
+                await _ftpManager.DownloadRepositoryAsync(repo, selectedLocation, progress, progressWindow.CancellationToken);
                 progressWindow.MarkCompleted();
             }
 
@@ -759,15 +757,13 @@ namespace Arma_3_LTRM.Views
                 if (selectedLocation == null)
                     return;
 
-                var repoPath = Path.Combine(selectedLocation, "Repositories", repo.Name);
-
                 var progressWindow = new DownloadProgressWindow();
                 progressWindow.Owner = this;
 
                 var progress = new Progress<string>(message => progressWindow.AppendLog(message));
 
                 progressWindow.Show();
-                await _ftpManager.DownloadRepositoryAsync(repo, repoPath, progress, progressWindow.CancellationToken);
+                await _ftpManager.DownloadRepositoryAsync(repo, selectedLocation, progress, progressWindow.CancellationToken);
                 progressWindow.MarkCompleted();
 
                 MessageBox.Show($"Repository '{repo.Name}' download completed!", "Download Complete", 
@@ -1043,10 +1039,9 @@ namespace Arma_3_LTRM.Views
         {
             foreach (var location in _settingsManager.Settings.BaseDownloadLocations)
             {
-                var repoPath = Path.Combine(location, "Repositories", repositoryName);
-                if (Directory.Exists(repoPath))
+                if (Directory.Exists(location))
                 {
-                    return repoPath;
+                    return location;
                 }
             }
             return null;
