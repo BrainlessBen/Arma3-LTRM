@@ -126,13 +126,16 @@ namespace Arma_3_LTRM.Services
             }
             catch (OperationCanceledException)
             {
-                progress?.Report("Download cancelled by user.");
+                // Release semaphore and re-throw without additional reporting
+                // The top-level handler will report the cancellation
                 semaphore.Release();
+                throw;
             }
             catch (Exception ex)
             {
                 progress?.Report($"Error scanning {path}: {ex.Message}");
                 semaphore.Release();
+                throw;
             }
         }
 
@@ -212,9 +215,15 @@ namespace Arma_3_LTRM.Services
                 
                 Interlocked.Add(ref _skippedFiles, allFilesToDownload.Count - filesToDownload.Count);
             }
+            catch (OperationCanceledException)
+            {
+                // Let cancellation propagate up without additional error reporting
+                throw;
+            }
             catch (Exception ex)
             {
                 progress?.Report($"Error downloading {currentPath}: {ex.Message}");
+                throw;
             }
         }
 
@@ -539,12 +548,13 @@ namespace Arma_3_LTRM.Services
             }
             catch (OperationCanceledException)
             {
-                progress?.Report("Download cancelled.");
+                // Let cancellation propagate - main handler will report it
                 throw;
             }
             catch (Exception ex)
             {
                 progress?.Report($"Error in directory {ftpUri.AbsolutePath}: {ex.Message}");
+                throw;
             }
         }
 
