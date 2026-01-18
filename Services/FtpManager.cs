@@ -23,6 +23,7 @@ namespace Arma_3_LTRM.Services
         private class FtpDirectoryCache
         {
             public Dictionary<string, List<FtpItem>> Cache { get; } = new Dictionary<string, List<FtpItem>>();
+            public object LockObject { get; } = new object();
         }
 
         private int _skippedFiles = 0;
@@ -105,6 +106,183 @@ namespace Arma_3_LTRM.Services
                 MessageBox.Show($"Failed to download from repository '{repository.Name}': {ex.Message}", 
                     "Download Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
+            }
+        }
+
+        public async Task<FileOperationAnalysis> AnalyzeRepositoryOperationsAsync(Repository repository, string destinationPath, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
+        {
+            var analysis = new FileOperationAnalysis();
+
+            try
+            {
+                progress?.Report($"Analyzing file operations for {repository.Name}...");
+
+                var ftpUri = new Uri($"ftp://{repository.Url}:{repository.Port}/");
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (!TestConnection(repository))
+                {
+                    progress?.Report("Failed to connect to repository.");
+                    return analysis;
+                }
+
+                FtpDirectoryCache cache;
+
+                var cachedData = _cacheManager.LoadCache(repository.Id.ToString());
+
+                if (cachedData != null && cachedData.IsValidForRepository(repository, _cacheLifetime))
+                {
+                    progress?.Report($"Using cached directory structure for analysis...");
+                    cache = ConvertCachedDataToCache(cachedData);
+                }
+                else
+                {
+                    progress?.Report("Building cache for analysis...");
+                    cache = await Task.Run(() => BuildDirectoryCache(ftpUri, repository.Username, repository.Password, "/", progress, cancellationToken), cancellationToken);
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Analyze file operations
+                AnalyzeOperationsFromCache(cache, "/", destinationPath, analysis);
+
+                progress?.Report($"Analysis complete: {analysis.FilesToCreate} create, {analysis.FilesToModify} modify, {analysis.FilesToDelete} delete");
+
+                return analysis;
+            }
+            catch (OperationCanceledException)
+            {
+                progress?.Report("Analysis cancelled.");
+                return analysis;
+            }
+            catch (Exception ex)
+            {
+                progress?.Report($"Error during analysis: {ex.Message}");
+                return analysis;
+            }
+        }
+
+        public async Task<FileOperationAnalysis> AnalyzeFolderOperationsAsync(Repository repository, string remotePath, string localPath, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
+        {
+            var analysis = new FileOperationAnalysis();
+
+            try
+            {
+                progress?.Report($"Analyzing operations for folder {remotePath}...");
+
+                var ftpUri = new Uri($"ftp://{repository.Url}:{repository.Port}/");
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                FtpDirectoryCache cache;
+
+                // Try to use existing cache
+                var cachedData = _cacheManager.LoadCache(repository.Id.ToString());
+                if (cachedData != null && !cachedData.IsExpired() && cachedData.DirectoryCache.ContainsKey(remotePath))
+                {
+                    progress?.Report($"Using cached data for analysis...");
+                    cache = ConvertCachedDataToCache(cachedData);
+                }
+                else
+                {
+                    progress?.Report("Building cache for analysis...");
+                    cache = await Task.Run(() => BuildDirectoryCache(ftpUri, repository.Username, repository.Password, remotePath, progress, cancellationToken), cancellationToken);
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Analyze file operations
+                AnalyzeOperationsFromCache(cache, remotePath, localPath, analysis);
+
+                progress?.Report($"Analysis complete: {analysis.FilesToCreate} create, {analysis.FilesToModify} modify, {analysis.FilesToDelete} delete");
+
+                return analysis;
+            }
+            catch (OperationCanceledException)
+            {
+                progress?.Report("Analysis cancelled.");
+                return analysis;
+            }
+            catch (Exception ex)
+            {
+                progress?.Report($"Error during analysis: {ex.Message}");
+                return analysis;
+            }
+        }
+
+        private void AnalyzeOperationsFromCache(FtpDirectoryCache cache, string currentPath, string destinationPath, FileOperationAnalysis analysis)
+        {
+            if (!cache.Cache.TryGetValue(currentPath, out var items))
+                return;
+
+            var subdirectories = items.Where(i => i.IsDirectory && i.Name != "." && i.Name != "..").ToList();
+            var files = items.Where(i => !i.IsDirectory).ToList();
+
+            // Build expected file sets for deletion analysis
+            var ftpFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var ftpDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            // Analyze files in current directory
+            foreach (var file in files)
+            {
+                var localPath = Path.Combine(destinationPath, file.Name);
+                ftpFiles.Add(localPath);
+
+                if (!File.Exists(localPath))
+                {
+                    analysis.FilesToCreate++;
+                    analysis.TotalDownloadSize += file.Size;
+                }
+                else
+                {
+                    var localFileInfo = new FileInfo(localPath);
+                    if (localFileInfo.Length != file.Size)
+                    {
+                        analysis.FilesToModify++;
+                        analysis.TotalDownloadSize += file.Size;
+                    }
+                }
+            }
+
+            // Recursively analyze subdirectories
+            foreach (var dir in subdirectories)
+            {
+                var localPath = Path.Combine(destinationPath, dir.Name);
+                ftpDirs.Add(localPath);
+                AnalyzeOperationsFromCache(cache, dir.FullPath, localPath, analysis);
+            }
+
+            // Analyze deletions (orphaned local files)
+            if (Directory.Exists(destinationPath))
+            {
+                var localFiles = Directory.GetFiles(destinationPath);
+                foreach (var file in localFiles)
+                {
+                    if (!ftpFiles.Contains(file))
+                    {
+                        analysis.FilesToDelete++;
+                    }
+                }
+
+                // Recursively check subdirectories for deletions
+                var localDirs = Directory.GetDirectories(destinationPath);
+                foreach (var dir in localDirs)
+                {
+                    if (!ftpDirs.Contains(dir))
+                    {
+                        // Count all files in this orphaned directory tree
+                        try
+                        {
+                            var orphanedFiles = Directory.GetFiles(dir, "*", SearchOption.AllDirectories);
+                            analysis.FilesToDelete += orphanedFiles.Length;
+                        }
+                        catch
+                        {
+                            // Skip if we can't access the directory
+                        }
+                    }
+                }
             }
         }
 
@@ -227,7 +405,7 @@ namespace Arma_3_LTRM.Services
             try
             {
                 var items = GetDirectoryListingOptimized(ftpUri, username, password, path);
-                lock (cache.Cache)
+                lock (cache.LockObject)
                 {
                     cache.Cache[path] = items;
                 }
@@ -296,7 +474,7 @@ namespace Arma_3_LTRM.Services
                         var directory = Path.GetDirectoryName(fileInfo.localPath);
                         if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
                         {
-                            lock (cache)
+                            lock (cache.LockObject)
                             {
                                 Directory.CreateDirectory(directory);
                             }
@@ -378,43 +556,20 @@ namespace Arma_3_LTRM.Services
             var items = new List<FtpItem>();
             
             // Construct the full URI for this path - escape special characters like @
-            var escapedPath = Uri.EscapeDataString(currentPath.TrimStart('/')).Replace("%2F", "/");
-            var pathUri = new Uri(baseUri, escapedPath);
-            if (!pathUri.AbsolutePath.EndsWith("/"))
-            {
-                pathUri = new Uri(pathUri.ToString() + "/");
-            }
-
-            // Try MLSD first (modern, structured listing)
+            Uri pathUri;
             try
             {
-                var mlsdRequest = (FtpWebRequest)WebRequest.Create(pathUri);
-                mlsdRequest.Method = "MLSD";
-                mlsdRequest.Credentials = new NetworkCredential(username, password);
-                mlsdRequest.UseBinary = true;
-                mlsdRequest.KeepAlive = false;
-
-                using var mlsdResponse = (FtpWebResponse)mlsdRequest.GetResponse();
-                using var mlsdStream = mlsdResponse.GetResponseStream();
-                using var mlsdReader = new StreamReader(mlsdStream);
-
-                while (!mlsdReader.EndOfStream)
+                var escapedPath = Uri.EscapeDataString(currentPath.TrimStart('/')).Replace("%2F", "/");
+                pathUri = new Uri(baseUri, escapedPath);
+                if (!pathUri.AbsolutePath.EndsWith("/"))
                 {
-                    var line = mlsdReader.ReadLine();
-                    if (string.IsNullOrEmpty(line))
-                        continue;
-
-                    var item = ParseMLSDLine(line, currentPath);
-                    if (item != null && item.Name != "." && item.Name != "..")
-                    {
-                        items.Add(item);
-                    }
+                    pathUri = new Uri(pathUri.ToString() + "/");
                 }
-                return items;
             }
             catch
             {
-                // MLSD not supported, fall back to LIST
+                // URI construction failed - return empty list (path has invalid characters)
+                return items;
             }
 
             // Try LIST -al (detailed listing)
@@ -425,6 +580,7 @@ namespace Arma_3_LTRM.Services
                 detailsRequest.Credentials = new NetworkCredential(username, password);
                 detailsRequest.UseBinary = true;
                 detailsRequest.KeepAlive = false;
+                detailsRequest.Timeout = 10000;
 
                 using var detailsResponse = (FtpWebResponse)detailsRequest.GetResponse();
                 using var detailsStream = detailsResponse.GetResponseStream();
@@ -444,9 +600,17 @@ namespace Arma_3_LTRM.Services
                 }
                 return items;
             }
-            catch
+            catch (WebException)
             {
-                // Fall back to simple listing with size checks
+                // Fall back to simple listing with size checks (expected, not an error)
+            }
+            catch (ArgumentException)
+            {
+                // Invalid path characters for LIST, fall back to simple listing (expected for paths with @ or special chars)
+            }
+            catch (UriFormatException)
+            {
+                // URI format issues, fall back to simple listing (expected for complex paths)
             }
 
             // Fallback: Simple listing (slowest)
@@ -457,6 +621,7 @@ namespace Arma_3_LTRM.Services
                 listRequest.Credentials = new NetworkCredential(username, password);
                 listRequest.UseBinary = true;
                 listRequest.KeepAlive = false;
+                listRequest.Timeout = 10000;
 
                 using var listResponse = (FtpWebResponse)listRequest.GetResponse();
                 using var listStream = listResponse.GetResponseStream();
@@ -476,44 +641,98 @@ namespace Arma_3_LTRM.Services
 
                 Parallel.ForEach(fileNames, parallelOptions, fileName =>
                 {
-                    var itemPath = currentPath.TrimEnd('/') + "/" + fileName;
-                    // Properly escape the file name for URI construction
-                    var escapedFileName = Uri.EscapeDataString(fileName);
-                    var itemUri = new Uri(pathUri, escapedFileName);
-                    var item = new FtpItem
-                    {
-                        Name = fileName,
-                        FullPath = itemPath
-                    };
-
                     try
                     {
-                        var sizeRequest = (FtpWebRequest)WebRequest.Create(itemUri);
-                        sizeRequest.Method = WebRequestMethods.Ftp.GetFileSize;
-                        sizeRequest.Credentials = new NetworkCredential(username, password);
-                        sizeRequest.UseBinary = true;
-                        sizeRequest.KeepAlive = false;
-                        sizeRequest.Timeout = 5000;
+                        var itemPath = currentPath.TrimEnd('/') + "/" + fileName;
+                        // Properly escape the file name for URI construction
+                        var escapedFileName = Uri.EscapeDataString(fileName);
+                        
+                        Uri itemUri;
+                        try
+                        {
+                            itemUri = new Uri(pathUri, escapedFileName);
+                        }
+                        catch (ArgumentException)
+                        {
+                            // Invalid characters in filename - skip this file
+                            return;
+                        }
+                        catch (UriFormatException)
+                        {
+                            // Invalid URI format - skip this file
+                            return;
+                        }
+                        
+                        var item = new FtpItem
+                        {
+                            Name = fileName,
+                            FullPath = itemPath
+                        };
 
-                        using var sizeResponse = (FtpWebResponse)sizeRequest.GetResponse();
-                        item.Size = sizeResponse.ContentLength;
-                        item.IsDirectory = false;
-                        item.LastModified = DateTime.MinValue;
+                        try
+                        {
+                            FtpWebRequest sizeRequest;
+                            try
+                            {
+                                sizeRequest = (FtpWebRequest)WebRequest.Create(itemUri);
+                            }
+                            catch (ArgumentException)
+                            {
+                                // WebRequest.Create failed with ArgumentException - treat as directory
+                                item.IsDirectory = true;
+                                item.Size = 0;
+                                item.LastModified = DateTime.MinValue;
+                                itemsList.Add(item);
+                                return;
+                            }
+                            
+                            sizeRequest.Method = WebRequestMethods.Ftp.GetFileSize;
+                            sizeRequest.Credentials = new NetworkCredential(username, password);
+                            sizeRequest.UseBinary = true;
+                            sizeRequest.KeepAlive = false;
+                            sizeRequest.Timeout = 5000;
+
+                            using var sizeResponse = (FtpWebResponse)sizeRequest.GetResponse();
+                            item.Size = sizeResponse.ContentLength;
+                            item.IsDirectory = false;
+                            item.LastModified = DateTime.MinValue;
+                        }
+                        catch (WebException)
+                        {
+                            // FTP error - probably a directory
+                            item.IsDirectory = true;
+                            item.Size = 0;
+                            item.LastModified = DateTime.MinValue;
+                        }
+                        catch (ArgumentException)
+                        {
+                            // Argument error during FTP operations - treat as directory
+                            item.IsDirectory = true;
+                            item.Size = 0;
+                            item.LastModified = DateTime.MinValue;
+                        }
+
+                        itemsList.Add(item);
                     }
-                    catch
+                    catch (ArgumentException)
                     {
-                        item.IsDirectory = true;
-                        item.Size = 0;
-                        item.LastModified = DateTime.MinValue;
+                        // Skip files with argument errors (invalid chars, etc.)
                     }
-
-                    itemsList.Add(item);
+                    catch (UriFormatException)
+                    {
+                        // Skip files with URI format errors
+                    }
                 });
 
                 items = itemsList.ToList();
             }
-            catch
+            catch (Exception ex)
             {
+                // Only log truly unexpected failures at this point
+                if (!(ex is WebException || ex is ArgumentException || ex is UriFormatException))
+                {
+                    System.Diagnostics.Debug.WriteLine($"Unexpected error listing {currentPath}: {ex.GetType().Name} - {ex.Message}");
+                }
             }
 
             return items;

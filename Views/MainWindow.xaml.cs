@@ -520,6 +520,38 @@ namespace Arma_3_LTRM.Views
             if (selectedLocation == null)
                 return;
 
+            // Analyze operations for all repositories
+            var totalAnalysis = new FileOperationAnalysis();
+            var analysisWindow = new DownloadProgressWindow();
+            analysisWindow.Owner = this;
+            analysisWindow.Title = "Analyzing...";
+            var analysisProgress = new Progress<string>(message => analysisWindow.AppendLog(message));
+            analysisWindow.Show();
+
+            foreach (var repo in selectedRepos)
+            {
+                var analysis = await _ftpManager.AnalyzeRepositoryOperationsAsync(repo, selectedLocation, analysisProgress, analysisWindow.CancellationToken);
+                totalAnalysis.FilesToCreate += analysis.FilesToCreate;
+                totalAnalysis.FilesToModify += analysis.FilesToModify;
+                totalAnalysis.FilesToDelete += analysis.FilesToDelete;
+                totalAnalysis.TotalDownloadSize += analysis.TotalDownloadSize;
+            }
+
+            analysisWindow.MarkCompleted();
+            analysisWindow.Close();
+
+            // Show confirmation dialog
+            if (totalAnalysis.HasOperations)
+            {
+                var confirmWindow = new FileOperationConfirmationWindow(totalAnalysis);
+                confirmWindow.Owner = this;
+                if (confirmWindow.ShowDialog() != true || !confirmWindow.UserConfirmed)
+                {
+                    return; // User cancelled
+                }
+            }
+
+            // Proceed with download
             foreach (var repo in selectedRepos)
             {
                 var progressWindow = new DownloadProgressWindow();
@@ -556,6 +588,38 @@ namespace Arma_3_LTRM.Views
             if (selectedLocation == null)
                 return;
 
+            // Analyze operations for all repositories
+            var totalAnalysis = new FileOperationAnalysis();
+            var analysisWindow = new DownloadProgressWindow();
+            analysisWindow.Owner = this;
+            analysisWindow.Title = "Analyzing...";
+            var analysisProgress = new Progress<string>(message => analysisWindow.AppendLog(message));
+            analysisWindow.Show();
+
+            foreach (var repo in selectedRepos)
+            {
+                var analysis = await _ftpManager.AnalyzeRepositoryOperationsAsync(repo, selectedLocation, analysisProgress, analysisWindow.CancellationToken);
+                totalAnalysis.FilesToCreate += analysis.FilesToCreate;
+                totalAnalysis.FilesToModify += analysis.FilesToModify;
+                totalAnalysis.FilesToDelete += analysis.FilesToDelete;
+                totalAnalysis.TotalDownloadSize += analysis.TotalDownloadSize;
+            }
+
+            analysisWindow.MarkCompleted();
+            analysisWindow.Close();
+
+            // Show confirmation dialog
+            if (totalAnalysis.HasOperations)
+            {
+                var confirmWindow = new FileOperationConfirmationWindow(totalAnalysis);
+                confirmWindow.Owner = this;
+                if (confirmWindow.ShowDialog() != true || !confirmWindow.UserConfirmed)
+                {
+                    return; // User cancelled
+                }
+            }
+
+            // Proceed with download
             foreach (var repo in selectedRepos)
             {
                 var progressWindow = new DownloadProgressWindow();
@@ -617,6 +681,60 @@ namespace Arma_3_LTRM.Views
             if (selectedLocation == null)
                 return;
 
+            // Analyze operations for all events
+            var totalAnalysis = new FileOperationAnalysis();
+            var analysisWindow = new DownloadProgressWindow();
+            analysisWindow.Owner = this;
+            analysisWindow.Title = "Analyzing...";
+            var analysisProgress = new Progress<string>(message => analysisWindow.AppendLog(message));
+            analysisWindow.Show();
+
+            foreach (var evt in selectedEvents)
+            {
+                foreach (var modFolder in evt.ModFolders)
+                {
+                    // Skip DLC and Workshop items - they don't need to be downloaded
+                    if (modFolder.ItemType == ModItemType.DLC || modFolder.ItemType == ModItemType.Workshop)
+                    {
+                        continue;
+                    }
+
+                    var repository = evt.Repositories.FirstOrDefault(r => r.Id == modFolder.RepositoryId);
+                    if (repository == null)
+                    {
+                        analysisWindow.MarkCompleted();
+                        analysisWindow.Close();
+                        MessageBox.Show($"Repository not found for folder '{modFolder.FolderPath}'.\n\nPlease check your repository configuration.", 
+                            "Repository Not Found", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+
+                    var relativePath = modFolder.FolderPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+                    var localPath = Path.Combine(selectedLocation, relativePath);
+
+                    var analysis = await _ftpManager.AnalyzeFolderOperationsAsync(repository, modFolder.FolderPath, localPath, analysisProgress, analysisWindow.CancellationToken);
+                    totalAnalysis.FilesToCreate += analysis.FilesToCreate;
+                    totalAnalysis.FilesToModify += analysis.FilesToModify;
+                    totalAnalysis.FilesToDelete += analysis.FilesToDelete;
+                    totalAnalysis.TotalDownloadSize += analysis.TotalDownloadSize;
+                }
+            }
+
+            analysisWindow.MarkCompleted();
+            analysisWindow.Close();
+
+            // Show confirmation dialog
+            if (totalAnalysis.HasOperations)
+            {
+                var confirmWindow = new FileOperationConfirmationWindow(totalAnalysis);
+                confirmWindow.Owner = this;
+                if (confirmWindow.ShowDialog() != true || !confirmWindow.UserConfirmed)
+                {
+                    return; // User cancelled
+                }
+            }
+
+            // Proceed with download
             foreach (var evt in selectedEvents)
             {
                 var progressWindow = new DownloadProgressWindow();
@@ -680,6 +798,60 @@ namespace Arma_3_LTRM.Views
             if (selectedLocation == null)
                 return;
 
+            // Analyze operations for all events
+            var totalAnalysis = new FileOperationAnalysis();
+            var analysisWindow = new DownloadProgressWindow();
+            analysisWindow.Owner = this;
+            analysisWindow.Title = "Analyzing...";
+            var analysisProgress = new Progress<string>(message => analysisWindow.AppendLog(message));
+            analysisWindow.Show();
+
+            foreach (var evt in selectedEvents)
+            {
+                foreach (var modFolder in evt.ModFolders)
+                {
+                    // Skip DLC and Workshop items - they don't need to be downloaded
+                    if (modFolder.ItemType == ModItemType.DLC || modFolder.ItemType == ModItemType.Workshop)
+                    {
+                        continue;
+                    }
+
+                    var repository = evt.Repositories.FirstOrDefault(r => r.Id == modFolder.RepositoryId);
+                    if (repository == null)
+                    {
+                        analysisWindow.MarkCompleted();
+                        analysisWindow.Close();
+                        MessageBox.Show($"Repository not found for folder '{modFolder.FolderPath}'.\n\nPlease check your repository configuration.", 
+                            "Repository Not Found", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+
+                    var relativePath = modFolder.FolderPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+                    var localPath = Path.Combine(selectedLocation, relativePath);
+
+                    var analysis = await _ftpManager.AnalyzeFolderOperationsAsync(repository, modFolder.FolderPath, localPath, analysisProgress, analysisWindow.CancellationToken);
+                    totalAnalysis.FilesToCreate += analysis.FilesToCreate;
+                    totalAnalysis.FilesToModify += analysis.FilesToModify;
+                    totalAnalysis.FilesToDelete += analysis.FilesToDelete;
+                    totalAnalysis.TotalDownloadSize += analysis.TotalDownloadSize;
+                }
+            }
+
+            analysisWindow.MarkCompleted();
+            analysisWindow.Close();
+
+            // Show confirmation dialog
+            if (totalAnalysis.HasOperations)
+            {
+                var confirmWindow = new FileOperationConfirmationWindow(totalAnalysis);
+                confirmWindow.Owner = this;
+                if (confirmWindow.ShowDialog() != true || !confirmWindow.UserConfirmed)
+                {
+                    return; // User cancelled
+                }
+            }
+
+            // Proceed with download
             foreach (var evt in selectedEvents)
             {
                 var progressWindow = new DownloadProgressWindow();
@@ -798,6 +970,29 @@ namespace Arma_3_LTRM.Views
             if (selectedLocation == null)
                 return;
 
+            // Analyze operations
+            var analysisWindow = new DownloadProgressWindow();
+            analysisWindow.Owner = this;
+            analysisWindow.Title = "Analyzing...";
+            var analysisProgress = new Progress<string>(message => analysisWindow.AppendLog(message));
+            analysisWindow.Show();
+
+            var analysis = await _ftpManager.AnalyzeRepositoryOperationsAsync(repo, selectedLocation, analysisProgress, analysisWindow.CancellationToken);
+            analysisWindow.MarkCompleted();
+            analysisWindow.Close();
+
+            // Show confirmation dialog
+            if (analysis.HasOperations)
+            {
+                var confirmWindow = new FileOperationConfirmationWindow(analysis);
+                confirmWindow.Owner = this;
+                if (confirmWindow.ShowDialog() != true || !confirmWindow.UserConfirmed)
+                {
+                    return; // User cancelled
+                }
+            }
+
+            // Proceed with download
             var progressWindow = new DownloadProgressWindow();
             progressWindow.Owner = this;
 
@@ -861,6 +1056,57 @@ namespace Arma_3_LTRM.Views
             if (selectedLocation == null)
                 return;
 
+            // Analyze operations
+            var totalAnalysis = new FileOperationAnalysis();
+            var analysisWindow = new DownloadProgressWindow();
+            analysisWindow.Owner = this;
+            analysisWindow.Title = "Analyzing...";
+            var analysisProgress = new Progress<string>(message => analysisWindow.AppendLog(message));
+            analysisWindow.Show();
+
+            foreach (var modFolder in evt.ModFolders)
+            {
+                // Skip DLC and Workshop items - they don't need to be downloaded
+                if (modFolder.ItemType == ModItemType.DLC || modFolder.ItemType == ModItemType.Workshop)
+                {
+                    continue;
+                }
+
+                var repository = evt.Repositories.FirstOrDefault(r => r.Id == modFolder.RepositoryId);
+                if (repository == null)
+                {
+                    analysisWindow.MarkCompleted();
+                    analysisWindow.Close();
+                    MessageBox.Show($"Repository not found for folder '{modFolder.FolderPath}'.\n\nPlease check your repository configuration.", 
+                        "Repository Not Found", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                var relativePath = modFolder.FolderPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+                var localPath = Path.Combine(selectedLocation, relativePath);
+
+                var analysis = await _ftpManager.AnalyzeFolderOperationsAsync(repository, modFolder.FolderPath, localPath, analysisProgress, analysisWindow.CancellationToken);
+                totalAnalysis.FilesToCreate += analysis.FilesToCreate;
+                totalAnalysis.FilesToModify += analysis.FilesToModify;
+                totalAnalysis.FilesToDelete += analysis.FilesToDelete;
+                totalAnalysis.TotalDownloadSize += analysis.TotalDownloadSize;
+            }
+
+            analysisWindow.MarkCompleted();
+            analysisWindow.Close();
+
+            // Show confirmation dialog
+            if (totalAnalysis.HasOperations)
+            {
+                var confirmWindow = new FileOperationConfirmationWindow(totalAnalysis);
+                confirmWindow.Owner = this;
+                if (confirmWindow.ShowDialog() != true || !confirmWindow.UserConfirmed)
+                {
+                    return; // User cancelled
+                }
+            }
+
+            // Proceed with download
             var progressWindow = new DownloadProgressWindow();
             progressWindow.Owner = this;
             var progress = new Progress<string>(message => progressWindow.AppendLog(message));
