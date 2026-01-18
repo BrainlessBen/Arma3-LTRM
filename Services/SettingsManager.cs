@@ -44,28 +44,33 @@ namespace Arma_3_LTRM.Services
                     {
                         Settings = settings;
                         
-                        // Migration: Convert old single BaseDownloadLocation to new list format
-                        if (Settings.BaseDownloadLocations == null || Settings.BaseDownloadLocations.Count == 0)
+                        // Ensure BaseDownloadLocations is never null
+                        if (Settings.BaseDownloadLocations == null)
                         {
-#pragma warning disable CS0618 // Type or member is obsolete
-                            if (!string.IsNullOrEmpty(Settings.BaseDownloadLocation))
+                            Settings.BaseDownloadLocations = new List<string>();
+                        }
+                        
+                        // Migration: Convert old single BaseDownloadLocation to new list format
+                        if (Settings.BaseDownloadLocations.Count == 0)
+                        {
+                            Settings.BaseDownloadLocations = new List<string>
                             {
-                                Settings.BaseDownloadLocations = new List<string> { Settings.BaseDownloadLocation };
-                            }
-                            else
-                            {
-                                Settings.BaseDownloadLocations = new List<string> 
-                                { 
-                                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Downloads") 
-                                };
-                            }
-#pragma warning restore CS0618 // Type or member is obsolete
+                                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Downloads")
+                            };
                             SaveSettings(); // Save migrated settings
                         }
                     }
                 }
                 else
                 {
+                    // Ensure default settings have BaseDownloadLocations initialized
+                    if (Settings.BaseDownloadLocations == null || Settings.BaseDownloadLocations.Count == 0)
+                    {
+                        Settings.BaseDownloadLocations = new List<string> 
+                        { 
+                            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Downloads") 
+                        };
+                    }
                     SaveSettings();
                 }
             }

@@ -7,6 +7,7 @@ namespace Arma_3_LTRM.Views
     public partial class DownloadProgressWindow : Window
     {
         private CancellationTokenSource? _cancellationTokenSource;
+        private bool _isCompleted = false;
         
         public CancellationToken CancellationToken => _cancellationTokenSource?.Token ?? CancellationToken.None;
 
@@ -34,6 +35,7 @@ namespace Arma_3_LTRM.Views
         {
             Dispatcher.Invoke(() =>
             {
+                _isCompleted = true;
                 CancelButton.Content = "Close";
                 CancelButton.IsEnabled = true;
             });
@@ -56,6 +58,13 @@ namespace Arma_3_LTRM.Views
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
+            // If download is completed, allow closing without warning
+            if (_isCompleted)
+            {
+                return;
+            }
+
+            // If download is still in progress, ask for confirmation
             if (_cancellationTokenSource != null && !_cancellationTokenSource.Token.IsCancellationRequested)
             {
                 var result = MessageBox.Show("Download is in progress. Are you sure you want to cancel?", 

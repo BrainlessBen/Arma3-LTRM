@@ -48,10 +48,16 @@ namespace Arma_3_LTRM.Views
             SettingsArma3PathTextBox.Text = _settingsManager.Settings.Arma3ExePath;
             
             _downloadLocations.Clear();
-            foreach (var location in _settingsManager.Settings.BaseDownloadLocations)
+            
+            // Ensure BaseDownloadLocations is never null
+            if (_settingsManager.Settings.BaseDownloadLocations != null)
             {
-                _downloadLocations.Add(location);
+                foreach (var location in _settingsManager.Settings.BaseDownloadLocations)
+                {
+                    _downloadLocations.Add(location);
+                }
             }
+            
             SettingsDownloadLocationsListBox.ItemsSource = _downloadLocations;
         }
 
@@ -283,6 +289,18 @@ namespace Arma_3_LTRM.Views
 
                 foreach (var modFolder in evt.ModFolders)
                 {
+                    // Skip DLC and Workshop items - they don't need to be downloaded
+                    if (modFolder.ItemType == ModItemType.DLC)
+                    {
+                        ((IProgress<string>)progress).Report($"Skipping DLC: {modFolder.FolderPath}");
+                        continue;
+                    }
+                    if (modFolder.ItemType == ModItemType.Workshop)
+                    {
+                        ((IProgress<string>)progress).Report($"Skipping Workshop Item: {modFolder.FolderPath}");
+                        continue;
+                    }
+
                     var repository = evt.Repositories.FirstOrDefault(r => r.Id == modFolder.RepositoryId);
                     if (repository == null)
                     {
@@ -312,7 +330,7 @@ namespace Arma_3_LTRM.Views
                 eventPaths.Add(selectedLocation);
             }
 
-            LaunchArma3(eventPaths);
+            LaunchArma3WithEvent(selectedEvents[0], eventPaths[0]);
         }
 
         private async void DownloadEvent_Click(object sender, RoutedEventArgs e)
@@ -340,6 +358,18 @@ namespace Arma_3_LTRM.Views
                 {
                     foreach (var modFolder in evt.ModFolders)
                     {
+                        // Skip DLC and Workshop items - they don't need to be downloaded
+                        if (modFolder.ItemType == ModItemType.DLC)
+                        {
+                            ((IProgress<string>)progress).Report($"Skipping DLC: {modFolder.FolderPath}");
+                            continue;
+                        }
+                        if (modFolder.ItemType == ModItemType.Workshop)
+                        {
+                            ((IProgress<string>)progress).Report($"Skipping Workshop Item: {modFolder.FolderPath}");
+                            continue;
+                        }
+
                         var repository = evt.Repositories.FirstOrDefault(r => r.Id == modFolder.RepositoryId);
                         if (repository == null)
                         {
@@ -392,7 +422,6 @@ namespace Arma_3_LTRM.Views
             if (!ValidateArma3Path())
                 return;
 
-            var eventPaths = new List<string>();
             foreach (var evt in selectedEvents)
             {
                 var foundPath = FindEventInLocations(evt);
@@ -402,10 +431,9 @@ namespace Arma_3_LTRM.Views
                         "Event Not Found", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
-                eventPaths.Add(foundPath);
-            }
 
-            LaunchArma3(eventPaths);
+                LaunchArma3WithEvent(evt, foundPath);
+            }
         }
 
         private void AddRepository_Click(object sender, RoutedEventArgs e)
@@ -491,7 +519,7 @@ namespace Arma_3_LTRM.Views
                 return;
             }
 
-            var addEventWindow = new AddEditEventWindow(_repositoryManager);
+            var addEventWindow = new AddEditEventWindow(_repositoryManager, _settingsManager);
             addEventWindow.Owner = this;
             if (addEventWindow.ShowDialog() == true && addEventWindow.Event != null)
             {
@@ -503,7 +531,7 @@ namespace Arma_3_LTRM.Views
         {
             if (sender is Button button && button.Tag is Event evt)
             {
-                var editEventWindow = new AddEditEventWindow(_repositoryManager, evt);
+                var editEventWindow = new AddEditEventWindow(_repositoryManager, _settingsManager, evt);
                 editEventWindow.Owner = this;
                 if (editEventWindow.ShowDialog() == true)
                 {
@@ -582,6 +610,10 @@ namespace Arma_3_LTRM.Views
                 bool allFoldersExist = true;
                 foreach (var modFolder in evt.ModFolders)
                 {
+                    // Skip DLC and Workshop items - they're not downloaded to locations
+                    if (modFolder.ItemType == ModItemType.DLC || modFolder.ItemType == ModItemType.Workshop)
+                        continue;
+
                     var relativePath = modFolder.FolderPath.TrimStart('/');
                     var localPath = Path.Combine(location, relativePath);
                     if (!Directory.Exists(localPath))
@@ -623,6 +655,81 @@ namespace Arma_3_LTRM.Views
                 if (modFolders.Count == 0)
                 {
                     MessageBox.Show("No mod folders found (folders starting with '@').", 
+                        "No Mods Found", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var modParams = string.Join(";", modFolders);
+                var arguments = $"-mod={modParams}";
+
+                var processInfo = new ProcessStartInfo
+                {
+                    FileName = _settingsManager.Settings.Arma3ExePath,
+                    Arguments = arguments,
+                    UseShellExecute = false
+                };
+
+                Process.Start(processInfo);
+
+                MessageBox.Show($"Arma 3 launched with {modFolders.Count} mod(s)!", 
+                    "Launch Successful", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to launch Arma 3: {ex.Message}", 
+                    "Launch Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void LaunchArma3WithEvent(Event evt, string basePath)
+        {
+            try
+            {
+                var arma3Dir = Path.GetDirectoryName(_settingsManager.Settings.Arma3ExePath);
+                if (string.IsNullOrEmpty(arma3Dir))
+                {
+                    MessageBox.Show("Invalid Arma 3 executable path.", 
+                        "Launch Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                var modFolders = new List<string>();
+                
+                foreach (var modFolder in evt.ModFolders)
+                {
+                    if (modFolder.ItemType == ModItemType.DLC)
+                    {
+                        // DLC folders are in the Arma 3 directory
+                        var dlcPath = Path.Combine(arma3Dir, modFolder.FolderPath);
+                        if (Directory.Exists(dlcPath))
+                        {
+                            modFolders.Add(dlcPath);
+                        }
+                    }
+                    else if (modFolder.ItemType == ModItemType.Workshop)
+                    {
+                        // Workshop items are in the !Workshop folder
+                        var workshopPath = Path.Combine(arma3Dir, "!Workshop", modFolder.FolderPath);
+                        if (Directory.Exists(workshopPath))
+                        {
+                            modFolders.Add(workshopPath);
+                        }
+                    }
+                    else
+                    {
+                        // Repository folders
+                        var relativePath = modFolder.FolderPath.TrimStart('/');
+                        var localPath = Path.Combine(basePath, relativePath);
+                        if (Directory.Exists(localPath))
+                        {
+                            modFolders.Add(localPath);
+                        }
+                    }
+                }
+
+                if (modFolders.Count == 0)
+                {
+                    MessageBox.Show("No mod folders found for this event.", 
                         "No Mods Found", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }

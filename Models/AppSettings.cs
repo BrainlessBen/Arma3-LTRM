@@ -7,7 +7,6 @@ namespace Arma_3_LTRM.Models
     public class AppSettings : INotifyPropertyChanged
     {
         private string _arma3ExePath;
-        private string _baseDownloadLocation;
         private List<string> _baseDownloadLocations;
         private List<string> _hiddenRepositories;
         private List<string> _hiddenEvents;
@@ -21,20 +20,6 @@ namespace Arma_3_LTRM.Models
                 {
                     _arma3ExePath = value;
                     OnPropertyChanged(nameof(Arma3ExePath));
-                }
-            }
-        }
-
-        [Obsolete("Use BaseDownloadLocations instead. Kept for backward compatibility.")]
-        public string BaseDownloadLocation
-        {
-            get => _baseDownloadLocation;
-            set
-            {
-                if (_baseDownloadLocation != value)
-                {
-                    _baseDownloadLocation = value;
-                    OnPropertyChanged(nameof(BaseDownloadLocation));
                 }
             }
         }
@@ -81,7 +66,7 @@ namespace Arma_3_LTRM.Models
         public AppSettings()
         {
             _arma3ExePath = string.Empty;
-            _baseDownloadLocation = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Downloads");
+            _baseDownloadLocations = new List<string>();
             _hiddenRepositories = new List<string>();
             _hiddenEvents = new List<string>();
         }

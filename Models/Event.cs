@@ -63,10 +63,19 @@ namespace Arma_3_LTRM.Models
         }
     }
 
+    public enum ModItemType
+    {
+        RepositoryFolder,
+        DLC,
+        Workshop
+    }
+
     public class ModFolder : INotifyPropertyChanged
     {
         private Guid _repositoryId;
         private string _folderPath;
+        private ModItemType _itemType;
+        private bool _isWorkshop;
 
         public Guid RepositoryId
         {
@@ -94,10 +103,38 @@ namespace Arma_3_LTRM.Models
             }
         }
 
+        public ModItemType ItemType
+        {
+            get => _itemType;
+            set
+            {
+                if (_itemType != value)
+                {
+                    _itemType = value;
+                    OnPropertyChanged(nameof(ItemType));
+                }
+            }
+        }
+
+        public bool IsWorkshop
+        {
+            get => _isWorkshop;
+            set
+            {
+                if (_isWorkshop != value)
+                {
+                    _isWorkshop = value;
+                    OnPropertyChanged(nameof(IsWorkshop));
+                }
+            }
+        }
+
         public ModFolder()
         {
             _repositoryId = Guid.Empty;
             _folderPath = string.Empty;
+            _itemType = ModItemType.RepositoryFolder;
+            _isWorkshop = false;
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

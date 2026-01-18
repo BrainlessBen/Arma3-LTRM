@@ -87,95 +87,302 @@
         </StackPanel>
 
         <Grid Grid.Row="2">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="20"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            
-            <StackPanel Grid.Column="0">
-                <TextBlock Text="Repository" FontWeight="Bold" Margin="0,0,0,8"/>
-                <ComboBox x:Name="RepositoryComboBox" DisplayMemberPath="Name" Foreground="Black"/>
-            </StackPanel>
-            
-            <StackPanel Grid.Column="2" VerticalAlignment="Bottom">
-                <Button x:Name="BrowseButton" Content="Browse Repository Folders" Width="200" Click="BrowseButton_Click"/>
-            </StackPanel>
+            <TabControl x:Name="ContentTabControl" Background="#252526" BorderBrush="#3F3F46">
+                <TabControl.Resources>
+                    <Style TargetType="TabItem">
+                        <Setter Property="Background" Value="#2D2D30"/>
+                        <Setter Property="Foreground" Value="#E0E0E0"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="Padding" Value="15,8"/>
+                        <Setter Property="FontSize" Value="14"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="TabItem">
+                                    <Border Name="Border" Background="{TemplateBinding Background}" 
+                                            BorderThickness="0,0,0,2" BorderBrush="Transparent" Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="Border" Property="Background" Value="#1E1E1E"/>
+                                            <Setter TargetName="Border" Property="BorderBrush" Value="#0E639C"/>
+                                        </Trigger>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Border" Property="Background" Value="#3E3E42"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </TabControl.Resources>
+
+                <!-- Repository Folders Tab -->
+                <TabItem Header="Repository Folders">
+                    <Grid Margin="10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="10"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="10"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <Grid Grid.Row="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Repository" FontWeight="Bold" Margin="0,0,0,8"/>
+                                <ComboBox x:Name="RepositoryComboBox" DisplayMemberPath="Name" Foreground="Black" SelectionChanged="RepositoryComboBox_SelectionChanged"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Grid.Row="2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Repository Folders (Check to add)" FontWeight="Bold" Margin="0,0,0,8"/>
+                                <TextBlock x:Name="BrowseStatusText" Text="Select a repository (loading in background...)" 
+                                           Foreground="#999" FontSize="12" Margin="0,0,0,5"/>
+                                <TreeView x:Name="FtpTreeView" Height="300">
+                                    <TreeView.ItemContainerStyle>
+                                        <Style TargetType="TreeViewItem">
+                                            <Setter Property="Foreground" Value="#E0E0E0"/>
+                                            <EventSetter Event="Expanded" Handler="TreeViewItem_Expanded"/>
+                                        </Style>
+                                    </TreeView.ItemContainerStyle>
+                                    <TreeView.ItemTemplate>
+                                        <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <CheckBox IsChecked="{Binding IsChecked}" 
+                                                          IsEnabled="{Binding IsSelectable}"
+                                                          Margin="0,0,5,0"/>
+                                                <TextBlock Text="{Binding Name}" Foreground="#E0E0E0"/>
+                                            </StackPanel>
+                                        </HierarchicalDataTemplate>
+                                    </TreeView.ItemTemplate>
+                                </TreeView>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Selected Items in Event" FontWeight="Bold" Margin="0,0,0,8"/>
+                                <ListBox x:Name="ModFoldersListBox" Height="300">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="5">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="{Binding TypeLabel}" FontWeight="Bold" FontSize="12" Foreground="#999"/>
+                                                    <TextBlock Text="{Binding FolderPath}" FontSize="14"/>
+                                                </StackPanel>
+                                                <Button Grid.Column="1" Content="?" 
+                                                        Background="#B73A3A"
+                                                        Padding="8,4" 
+                                                        Margin="10,0,0,0"
+                                                        Click="RemoveFolderButton_Click"
+                                                        Tag="{Binding}">
+                                                    <Button.Style>
+                                                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                                            <Setter Property="Background" Value="#B73A3A"/>
+                                                            <Style.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter Property="Background" Value="#D84848"/>
+                                                                </Trigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center">
+                            <Button x:Name="AddSelectedButton" Content="Add Checked Folders to Event" Width="250" 
+                                    Click="AddSelectedButton_Click" IsEnabled="False"/>
+                        </StackPanel>
+                    </Grid>
+                </TabItem>
+
+                <!-- DLC Tab -->
+                <TabItem Header="DLC">
+                    <Grid Margin="10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="10"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="10"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Text="Available DLC (from Arma 3 keys folder)" FontWeight="Bold"/>
+
+                        <Grid Grid.Row="2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="DLC Items (Check to add)" FontWeight="Bold" Margin="0,0,0,8"/>
+                                <ListBox x:Name="DlcListBox" Height="300">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" Margin="5">
+                                                <CheckBox IsChecked="{Binding IsChecked}" Margin="0,0,10,0"/>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14"/>
+                                                    <TextBlock Text="{Binding KeyFileName}" FontSize="11" Foreground="#999"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Selected Items in Event" FontWeight="Bold" Margin="0,0,0,8"/>
+                                <ListBox ItemsSource="{Binding ElementName=ModFoldersListBox, Path=ItemsSource}" Height="300">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="5">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="{Binding TypeLabel}" FontWeight="Bold" FontSize="12" Foreground="#999"/>
+                                                    <TextBlock Text="{Binding FolderPath}" FontSize="14"/>
+                                                </StackPanel>
+                                                <Button Grid.Column="1" Content="?" 
+                                                        Background="#B73A3A"
+                                                        Padding="8,4" 
+                                                        Margin="10,0,0,0"
+                                                        Click="RemoveFolderButton_Click"
+                                                        Tag="{Binding}">
+                                                    <Button.Style>
+                                                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                                            <Setter Property="Background" Value="#B73A3A"/>
+                                                            <Style.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter Property="Background" Value="#D84848"/>
+                                                                </Trigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center">
+                            <Button Content="Add Checked DLC to Event" Width="250" Click="AddDlcButton_Click"/>
+                        </StackPanel>
+                    </Grid>
+                </TabItem>
+
+                <!-- Workshop Items Tab -->
+                <TabItem Header="Workshop Items">
+                    <Grid Margin="10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="10"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="10"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Text="Workshop Items (from !Workshop folder)" FontWeight="Bold"/>
+
+                        <Grid Grid.Row="2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Workshop Items (Check to add)" FontWeight="Bold" Margin="0,0,0,8"/>
+                                <ListBox x:Name="WorkshopListBox" Height="300">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" Margin="5">
+                                                <CheckBox IsChecked="{Binding IsChecked}" Margin="0,0,10,0"/>
+                                                <TextBlock Text="{Binding FolderName}" FontSize="14"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Selected Items in Event" FontWeight="Bold" Margin="0,0,0,8"/>
+                                <ListBox ItemsSource="{Binding ElementName=ModFoldersListBox, Path=ItemsSource}" Height="300">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="5">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="{Binding TypeLabel}" FontWeight="Bold" FontSize="12" Foreground="#999"/>
+                                                    <TextBlock Text="{Binding FolderPath}" FontSize="14"/>
+                                                </StackPanel>
+                                                <Button Grid.Column="1" Content="?" 
+                                                        Background="#B73A3A"
+                                                        Padding="8,4" 
+                                                        Margin="10,0,0,0"
+                                                        Click="RemoveFolderButton_Click"
+                                                        Tag="{Binding}">
+                                                    <Button.Style>
+                                                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                                            <Setter Property="Background" Value="#B73A3A"/>
+                                                            <Style.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter Property="Background" Value="#D84848"/>
+                                                                </Trigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center">
+                            <Button Content="Add Checked Workshop Items to Event" Width="250" Click="AddWorkshopButton_Click"/>
+                        </StackPanel>
+                    </Grid>
+                </TabItem>
+            </TabControl>
         </Grid>
 
         <Grid Grid.Row="4">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="20"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-
-            <StackPanel Grid.Column="0">
-                <TextBlock Text="Repository Folders (Check to add)" FontWeight="Bold" Margin="0,0,0,8"/>
-                <TextBlock x:Name="BrowseStatusText" Text="Select a repository and click 'Browse Repository Folders' (only @ folders can be checked)" 
-                           Foreground="#999" FontSize="12" Margin="0,0,0,5"/>
-                <TreeView x:Name="FtpTreeView" Height="350">
-                    <TreeView.ItemContainerStyle>
-                        <Style TargetType="TreeViewItem">
-                            <Setter Property="Foreground" Value="#E0E0E0"/>
-                            <EventSetter Event="Expanded" Handler="TreeViewItem_Expanded"/>
-                        </Style>
-                    </TreeView.ItemContainerStyle>
-                    <TreeView.ItemTemplate>
-                        <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                            <StackPanel Orientation="Horizontal">
-                                <CheckBox IsChecked="{Binding IsChecked}" 
-                                          IsEnabled="{Binding IsSelectable}"
-                                          Margin="0,0,5,0"/>
-                                <TextBlock Text="{Binding Name}" Foreground="#E0E0E0"/>
-                            </StackPanel>
-                        </HierarchicalDataTemplate>
-                    </TreeView.ItemTemplate>
-                </TreeView>
-            </StackPanel>
-
-            <StackPanel Grid.Column="2">
-                <TextBlock Text="Selected Mod Folders in Event" FontWeight="Bold" Margin="0,0,0,8"/>
-                <ListBox x:Name="ModFoldersListBox" Height="350">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <Grid Margin="5">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="{Binding RepositoryName}" FontWeight="Bold" FontSize="12" Foreground="#999"/>
-                                    <TextBlock Text="{Binding FolderPath}" FontSize="14"/>
-                                </StackPanel>
-                                <Button Grid.Column="1" Content="?" 
-                                        Background="#B73A3A"
-                                        Padding="8,4" 
-                                        Margin="10,0,0,0"
-                                        Click="RemoveFolderButton_Click"
-                                        Tag="{Binding}">
-                                    <Button.Style>
-                                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                            <Setter Property="Background" Value="#B73A3A"/>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Background" Value="#D84848"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Button.Style>
-                                </Button>
-                            </Grid>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </StackPanel>
         </Grid>
 
-        <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Center">
-            <Button x:Name="AddSelectedButton" Content="Add Checked Folders to Event" Width="250" 
-                    Click="AddSelectedButton_Click" IsEnabled="False"/>
-        </StackPanel>
+        <Grid Grid.Row="6">
+        </Grid>
 
         <StackPanel Grid.Row="8" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button x:Name="SaveButton" Content="Save Event" Width="120" Click="SaveButton_Click" Margin="0,0,10,0"/>
