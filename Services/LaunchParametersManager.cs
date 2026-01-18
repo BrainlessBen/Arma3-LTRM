@@ -180,8 +180,8 @@ namespace Arma_3_LTRM.Services
             // Combine all mod paths into a single -mod= parameter with semicolon separation
             if (_modPaths.Count > 0)
             {
-                var modParam = string.Join(";", _modPaths);
-                parameters.Add($"-mod=\"{modParam}\"");
+                var modParam = string.Join(";", _modPaths.Select(path => $"\"{path}\""));
+                parameters.Add($"-mod={modParam}");
             }
 
             return string.Join(Environment.NewLine, parameters);
