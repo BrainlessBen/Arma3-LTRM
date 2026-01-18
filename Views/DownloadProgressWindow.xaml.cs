@@ -1,74 +1,27 @@
 using System.Windows;
 using System.Windows.Threading;
-using Arma_3_LTRM.Models;
-using Arma_3_LTRM.Services;
 
 namespace Arma_3_LTRM.Views
 {
     public partial class DownloadProgressWindow : Window
     {
-        private readonly List<Repository> _repositories;
-        private readonly string _destinationPath;
-        private readonly FtpManager _ftpManager;
-
-        public bool DownloadSuccessful { get; private set; }
-
-        public DownloadProgressWindow(List<Repository> repositories, string destinationPath)
+        public DownloadProgressWindow()
         {
             InitializeComponent();
-            _repositories = repositories;
-            _destinationPath = destinationPath;
-            _ftpManager = new FtpManager();
-            
-            Loaded += DownloadProgressWindow_Loaded;
         }
 
-        private async void DownloadProgressWindow_Loaded(object sender, RoutedEventArgs e)
+        public void AppendLog(string message)
         {
-            await Dispatcher.InvokeAsync(async () =>
+            Dispatcher.Invoke(() =>
             {
-                await Task.Delay(100);
+                ProgressTextBlock.Text += message + Environment.NewLine;
                 
-                DownloadSuccessful = true;
-
-                var progress = new Progress<string>(message =>
+                Dispatcher.InvokeAsync(() =>
                 {
-                    ProgressTextBlock.Text += message + Environment.NewLine;
-                    
-                    Dispatcher.InvokeAsync(() =>
-                    {
-                        var scrollViewer = FindScrollViewer(ProgressTextBlock);
-                        scrollViewer?.ScrollToEnd();
-                    }, DispatcherPriority.Background);
-                });
-
-                foreach (var repository in _repositories)
-                {
-                    ProgressTextBlock.Text += $"{Environment.NewLine}=== Downloading from repository: {repository.Name} ==={Environment.NewLine}";
-                    
-                    await Task.Delay(50);
-
-                    var result = await _ftpManager.DownloadRepositoryAsync(repository, _destinationPath, progress);
-                    
-                    if (!result)
-                    {
-                        DownloadSuccessful = false;
-                    }
-
-                    ProgressTextBlock.Text += $"=== Repository {repository.Name} completed ==={Environment.NewLine}";
-                }
-
-                if (DownloadSuccessful)
-                {
-                    ProgressTextBlock.Text += $"{Environment.NewLine}All downloads completed successfully!";
-                }
-                else
-                {
-                    ProgressTextBlock.Text += $"{Environment.NewLine}Some downloads failed. Please check the log above.";
-                }
-                
-                CloseButton.IsEnabled = true;
-            }, DispatcherPriority.Background);
+                    var scrollViewer = FindScrollViewer(ProgressTextBlock);
+                    scrollViewer?.ScrollToEnd();
+                }, DispatcherPriority.Background);
+            });
         }
 
         private System.Windows.Controls.ScrollViewer? FindScrollViewer(DependencyObject element)
@@ -82,11 +35,6 @@ namespace Arma_3_LTRM.Views
                 return scrollViewer;
 
             return FindScrollViewer(parent);
-        }
-
-        private void CloseButton_Click(object sender, RoutedEventArgs e)
-        {
-            Close();
         }
     }
 }

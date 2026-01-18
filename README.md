@@ -1,4 +1,4 @@
-# Arma 3 LTRM (Lowlands Tactical Repo Manager)
+﻿# Arma 3 LTRM (Lowlands Tactical Repo Manager)
 
 A modern Windows desktop application for managing and synchronizing Arma 3 mod repositories via FTP, designed to streamline the process of keeping game modifications up-to-date for multiplayer gaming communities.
 
@@ -59,23 +59,23 @@ Arma 3 LTRM provides a user-friendly interface to:
 ### Project Structure
 ```
 Arma 3 LTRM/
-??? Models/
-?   ??? Repository.cs          - Data model for FTP repository configuration
-?   ??? Event.cs               - Event and ModFolder data models
-?   ??? AppSettings.cs         - Application settings model
-??? Services/
-?   ??? FtpManager.cs          - FTP operations, file synchronization, and browsing
-?   ??? RepositoryManager.cs   - Repository persistence and CRUD
-?   ??? EventManager.cs        - Event persistence and CRUD
-?   ??? SettingsManager.cs     - Application settings management
-??? Views/
-?   ??? MainWindow.xaml(.cs)   - Primary tabbed interface (Home, Manage Repos, Events, Settings)
-?   ??? AddRepositoryWindow.xaml(.cs) - Repository add/edit dialog
-?   ??? AddEditEventWindow.xaml(.cs) - Event creation with FTP browsing
-?   ??? SettingsWindow.xaml(.cs) - Settings configuration dialog
-?   ??? SimpleProgressWindow.xaml(.cs) - Download progress display
-??? App.xaml(.cs)              - Application entry point
-??? AssemblyInfo.cs            - Assembly metadata
+│   Models/
+│   ├── Repository.cs          - Data model for FTP repository configuration
+│   ├── Event.cs               - Event and ModFolder data models
+│   ├── AppSettings.cs         - Application settings model
+│   Services/
+│   ├── FtpManager.cs          - FTP operations, file synchronization, and browsing
+│   ├── RepositoryManager.cs   - Repository persistence and CRUD
+│   ├── EventManager.cs        - Event persistence and CRUD
+│   ├── SettingsManager.cs     - Application settings management
+│   Views/
+│   ├── MainWindow.xaml(.cs)   - Primary tabbed interface (Home, Manage Repos, Events, Settings)
+│   ├── AddRepositoryWindow.xaml(.cs) - Repository add/edit dialog
+│   ├── AddEditEventWindow.xaml(.cs) - Event creation with FTP browsing
+│   ├── SettingsWindow.xaml(.cs) - Settings configuration dialog
+│   └── DownloadProgressWindow.xaml(.cs) - Download progress display
+├── App.xaml(.cs)              - Application entry point
+└── AssemblyInfo.cs            - Assembly metadata
 ```
 
 ## How It Works

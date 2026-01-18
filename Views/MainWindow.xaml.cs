@@ -128,7 +128,7 @@ namespace Arma_3_LTRM.Views
                 var repoPath = Path.Combine(_settingsManager.Settings.BaseDownloadLocation, "Repositories", repo.Name);
                 downloadPaths.Add(repoPath);
 
-                var progressWindow = new SimpleProgressWindow();
+                var progressWindow = new DownloadProgressWindow();
                 progressWindow.Owner = this;
 
                 var progress = new Progress<string>(message => progressWindow.AppendLog(message));
@@ -162,7 +162,7 @@ namespace Arma_3_LTRM.Views
             {
                 var repoPath = Path.Combine(_settingsManager.Settings.BaseDownloadLocation, "Repositories", repo.Name);
 
-                var progressWindow = new SimpleProgressWindow();
+                var progressWindow = new DownloadProgressWindow();
                 progressWindow.Owner = this;
 
                 var progress = new Progress<string>(message => progressWindow.AppendLog(message));
@@ -221,7 +221,7 @@ namespace Arma_3_LTRM.Views
             var eventPaths = new List<string>();
             foreach (var evt in selectedEvents)
             {
-                var progressWindow = new SimpleProgressWindow();
+                var progressWindow = new DownloadProgressWindow();
                 progressWindow.Owner = this;
                 var progress = new Progress<string>(message => progressWindow.AppendLog(message));
                 progressWindow.Show();
@@ -272,7 +272,7 @@ namespace Arma_3_LTRM.Views
 
             foreach (var evt in selectedEvents)
             {
-                var progressWindow = new SimpleProgressWindow();
+                var progressWindow = new DownloadProgressWindow();
                 progressWindow.Owner = this;
                 var progress = new Progress<string>(message => progressWindow.AppendLog(message));
                 progressWindow.Show();
