@@ -773,88 +773,182 @@ namespace Arma_3_LTRM.Views
 
         private async void DownloadRepositoryItem_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button button && button.Tag is Repository repo)
+            Repository? repo = null;
+            
+            // Handle both Button (old) and MenuItem (new context menu) sources
+            if (sender is Button button && button.Tag is Repository buttonRepo)
             {
-                var selectedLocation = SelectDownloadLocation();
-                if (selectedLocation == null)
-                    return;
-
-                var progressWindow = new DownloadProgressWindow();
-                progressWindow.Owner = this;
-
-                var progress = new Progress<string>(message => progressWindow.AppendLog(message));
-
-                progressWindow.Show();
-                await _ftpManager.DownloadRepositoryAsync(repo, selectedLocation, progress, progressWindow.CancellationToken);
-                progressWindow.MarkCompleted();
-
-                MessageBox.Show($"Repository '{repo.Name}' download completed!", "Download Complete", 
-                    MessageBoxButton.OK, MessageBoxImage.Information);
+                repo = buttonRepo;
             }
+            else if (sender is System.Windows.Controls.MenuItem menuItem)
+            {
+                // MenuItem is in ContextMenu on Grid, get Grid's DataContext
+                if (menuItem.Parent is System.Windows.Controls.ContextMenu contextMenu &&
+                    contextMenu.PlacementTarget is System.Windows.FrameworkElement element &&
+                    element.DataContext is Repository menuRepo)
+                {
+                    repo = menuRepo;
+                }
+            }
+            
+            if (repo == null)
+                return;
+                
+            var selectedLocation = SelectDownloadLocation();
+            if (selectedLocation == null)
+                return;
+
+            var progressWindow = new DownloadProgressWindow();
+            progressWindow.Owner = this;
+
+            var progress = new Progress<string>(message => progressWindow.AppendLog(message));
+
+            progressWindow.Show();
+            await _ftpManager.DownloadRepositoryAsync(repo, selectedLocation, progress, progressWindow.CancellationToken);
+            progressWindow.MarkCompleted();
+
+            MessageBox.Show($"Repository '{repo.Name}' download completed!", "Download Complete", 
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        
+        private void InvalidateRepositoryCache_Click(object sender, RoutedEventArgs e)
+        {
+            Repository? repo = null;
+            
+            if (sender is System.Windows.Controls.MenuItem menuItem)
+            {
+                // MenuItem is in ContextMenu on Grid, get Grid's DataContext
+                if (menuItem.Parent is System.Windows.Controls.ContextMenu contextMenu &&
+                    contextMenu.PlacementTarget is System.Windows.FrameworkElement element &&
+                    element.DataContext is Repository menuRepo)
+                {
+                    repo = menuRepo;
+                }
+            }
+            
+            if (repo == null)
+                return;
+                
+            _ftpManager.InvalidateCache(repo.Id.ToString());
+            MessageBox.Show($"Cache invalidated for repository '{repo.Name}'.\nThe cache will be rebuilt on the next download.", 
+                "Cache Invalidated", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private async void DownloadEventItem_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button button && button.Tag is Event evt)
+            Event? evt = null;
+            
+            // Handle both Button (old) and MenuItem (new context menu) sources
+            if (sender is Button button && button.Tag is Event buttonEvent)
             {
-                var selectedLocation = SelectDownloadLocation();
-                if (selectedLocation == null)
-                    return;
-
-                var progressWindow = new DownloadProgressWindow();
-                progressWindow.Owner = this;
-                var progress = new Progress<string>(message => progressWindow.AppendLog(message));
-                progressWindow.Show();
-
-                try
+                evt = buttonEvent;
+            }
+            else if (sender is System.Windows.Controls.MenuItem menuItem)
+            {
+                // MenuItem is in ContextMenu on Grid, get Grid's DataContext
+                if (menuItem.Parent is System.Windows.Controls.ContextMenu contextMenu &&
+                    contextMenu.PlacementTarget is System.Windows.FrameworkElement element &&
+                    element.DataContext is Event menuEvent)
                 {
-                    foreach (var modFolder in evt.ModFolders)
-                    {
-                        // Skip DLC and Workshop items - they don't need to be downloaded
-                        if (modFolder.ItemType == ModItemType.DLC)
-                        {
-                            ((IProgress<string>)progress).Report($"Skipping DLC: {modFolder.FolderPath}");
-                            continue;
-                        }
-                        if (modFolder.ItemType == ModItemType.Workshop)
-                        {
-                            ((IProgress<string>)progress).Report($"Skipping Workshop Item: {modFolder.FolderPath}");
-                            continue;
-                        }
-
-                        var repository = evt.Repositories.FirstOrDefault(r => r.Id == modFolder.RepositoryId);
-                        if (repository == null)
-                        {
-                            progressWindow.Close();
-                            MessageBox.Show($"Repository not found for folder '{modFolder.FolderPath}'.\n\nPlease check your repository configuration.", 
-                                "Repository Not Found", MessageBoxButton.OK, MessageBoxImage.Error);
-                            return;
-                        }
-
-                        // Maintain full folder structure from FTP path
-                        // e.g., /mods/xyz/@ACE becomes eventBasePath/mods/xyz/@ACE
-                        var relativePath = modFolder.FolderPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
-                        var localPath = Path.Combine(selectedLocation, relativePath);
-                        
-                        await _ftpManager.DownloadFolderAsync(
-                            repository,  // ? Now uses Repository object (saves cache!)
-                            modFolder.FolderPath,
-                            localPath,
-                            progress,
-                            progressWindow.CancellationToken
-                        );
-                    }
-
-                    progressWindow.MarkCompleted();
-                    MessageBox.Show($"Event '{evt.Name}' download completed!", "Download Complete", 
-                        MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-                catch (OperationCanceledException)
-                {
-                    progressWindow.Close();
-                    ((IProgress<string>)progress).Report("Download cancelled by user.");
+                    evt = menuEvent;
                 }
             }
+            
+            if (evt == null)
+                return;
+                
+            var selectedLocation = SelectDownloadLocation();
+            if (selectedLocation == null)
+                return;
+
+            var progressWindow = new DownloadProgressWindow();
+            progressWindow.Owner = this;
+            var progress = new Progress<string>(message => progressWindow.AppendLog(message));
+            progressWindow.Show();
+
+            try
+            {
+                foreach (var modFolder in evt.ModFolders)
+                {
+                    // Skip DLC and Workshop items - they don't need to be downloaded
+                    if (modFolder.ItemType == ModItemType.DLC)
+                    {
+                        ((IProgress<string>)progress).Report($"Skipping DLC: {modFolder.FolderPath}");
+                        continue;
+                    }
+                    if (modFolder.ItemType == ModItemType.Workshop)
+                    {
+                        ((IProgress<string>)progress).Report($"Skipping Workshop Item: {modFolder.FolderPath}");
+                        continue;
+                    }
+
+                    var repository = evt.Repositories.FirstOrDefault(r => r.Id == modFolder.RepositoryId);
+                    if (repository == null)
+                    {
+                        progressWindow.Close();
+                        MessageBox.Show($"Repository not found for folder '{modFolder.FolderPath}'.\n\nPlease check your repository configuration.", 
+                            "Repository Not Found", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+
+                    // Maintain full folder structure from FTP path
+                    // e.g., /mods/xyz/@ACE becomes eventBasePath/mods/xyz/@ACE
+                    var relativePath = modFolder.FolderPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+                    var localPath = Path.Combine(selectedLocation, relativePath);
+                    
+                    await _ftpManager.DownloadFolderAsync(
+                        repository,  // ? Now uses Repository object (saves cache!)
+                        modFolder.FolderPath,
+                        localPath,
+                        progress,
+                        progressWindow.CancellationToken
+                    );
+                }
+
+                progressWindow.MarkCompleted();
+                MessageBox.Show($"Event '{evt.Name}' download completed!", "Download Complete", 
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (OperationCanceledException)
+            {
+                progressWindow.Close();
+                ((IProgress<string>)progress).Report("Download cancelled by user.");
+            }
+        }
+        
+        private void InvalidateEventCache_Click(object sender, RoutedEventArgs e)
+        {
+            Event? evt = null;
+            
+            if (sender is System.Windows.Controls.MenuItem menuItem)
+            {
+                // MenuItem is in ContextMenu on Grid, get Grid's DataContext
+                if (menuItem.Parent is System.Windows.Controls.ContextMenu contextMenu &&
+                    contextMenu.PlacementTarget is System.Windows.FrameworkElement element &&
+                    element.DataContext is Event menuEvent)
+                {
+                    evt = menuEvent;
+                }
+            }
+            
+            if (evt == null)
+                return;
+                
+            // Invalidate cache for all repositories used in this event
+            var repositoryIds = evt.ModFolders
+                .Where(m => m.ItemType == ModItemType.RepositoryFolder)
+                .Select(m => m.RepositoryId)
+                .Distinct()
+                .ToList();
+                
+            foreach (var repoId in repositoryIds)
+            {
+                _ftpManager.InvalidateCache(repoId.ToString());
+            }
+            
+            var repoCount = repositoryIds.Count;
+            MessageBox.Show($"Cache invalidated for {repoCount} repositor{(repoCount == 1 ? "y" : "ies")} used in event '{evt.Name}'.\nThe cache will be rebuilt on the next download.", 
+                "Cache Invalidated", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void AddRepository_Click(object sender, RoutedEventArgs e)

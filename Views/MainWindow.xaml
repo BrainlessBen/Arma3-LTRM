@@ -469,12 +469,17 @@ Background="#1E1E1E">
                         <ListBox x:Name="RepositoriesListBox" Margin="0,0,0,15">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid Margin="5">
+                                    <Grid Margin="5" Background="Transparent">
+                                        <Grid.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="Download" Click="DownloadRepositoryItem_Click"/>
+                                                <MenuItem Header="Invalidate Cache" Click="InvalidateRepositoryCache_Click"/>
+                                            </ContextMenu>
+                                        </Grid.ContextMenu>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <CheckBox Grid.Column="0" IsChecked="{Binding IsChecked}" 
                                                   VerticalAlignment="Center" Margin="0,0,10,0"
@@ -485,12 +490,6 @@ Background="#1E1E1E">
                                             <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="16"/>
                                             <TextBlock Text="{Binding Url}" Foreground="#999" FontSize="12"/>
                                         </StackPanel>
-                                        <Button Grid.Column="3" Content="⬇ Download" 
-                                                Click="DownloadRepositoryItem_Click"
-                                                Tag="{Binding}"
-                                                Margin="10,0,0,0"
-                                                VerticalAlignment="Center"
-                                                MinWidth="100"/>
                                     </Grid>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
@@ -510,12 +509,17 @@ Background="#1E1E1E">
                         <ListBox x:Name="EventsListBox" Margin="0,0,0,15">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid Margin="5">
+                                    <Grid Margin="5" Background="Transparent">
+                                        <Grid.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="Download" Click="DownloadEventItem_Click"/>
+                                                <MenuItem Header="Invalidate Cache" Click="InvalidateEventCache_Click"/>
+                                            </ContextMenu>
+                                        </Grid.ContextMenu>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <CheckBox Grid.Column="0" IsChecked="{Binding IsChecked}" 
                                                   VerticalAlignment="Center" Margin="0,0,10,0"
@@ -529,12 +533,6 @@ Background="#1E1E1E">
                                                 <Run Text=" mod folder(s)"/>
                                             </TextBlock>
                                         </StackPanel>
-                                        <Button Grid.Column="3" Content="⬇ Download" 
-                                                Click="DownloadEventItem_Click"
-                                                Tag="{Binding}"
-                                                Margin="10,0,0,0"
-                                                VerticalAlignment="Center"
-                                                MinWidth="100"/>
                                     </Grid>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
