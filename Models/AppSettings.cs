@@ -10,6 +10,7 @@ namespace Arma_3_LTRM.Models
         private List<string> _baseDownloadLocations;
         private List<string> _hiddenRepositories;
         private List<string> _hiddenEvents;
+        private LaunchParameters _launchParameters;
 
         public string Arma3ExePath
         {
@@ -63,12 +64,26 @@ namespace Arma_3_LTRM.Models
             }
         }
 
+        public LaunchParameters LaunchParameters
+        {
+            get => _launchParameters;
+            set
+            {
+                if (_launchParameters != value)
+                {
+                    _launchParameters = value;
+                    OnPropertyChanged(nameof(LaunchParameters));
+                }
+            }
+        }
+
         public AppSettings()
         {
             _arma3ExePath = string.Empty;
             _baseDownloadLocations = new List<string>();
             _hiddenRepositories = new List<string>();
             _hiddenEvents = new List<string>();
+            _launchParameters = new LaunchParameters();
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

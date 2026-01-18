@@ -243,9 +243,20 @@
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal" Margin="5">
-                                                <CheckBox IsChecked="{Binding IsChecked}" Margin="0,0,10,0"/>
+                                                <CheckBox IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}" Margin="0,0,10,0"/>
                                                 <StackPanel>
-                                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14"/>
+                                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="#E0E0E0"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsError}" Value="True">
+                                                                        <Setter Property="Foreground" Value="#FF6B6B"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
                                                     <TextBlock Text="{Binding KeyFileName}" FontSize="11" Foreground="#999"/>
                                                 </StackPanel>
                                             </StackPanel>
@@ -324,8 +335,22 @@
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal" Margin="5">
-                                                <CheckBox IsChecked="{Binding IsChecked}" Margin="0,0,10,0"/>
-                                                <TextBlock Text="{Binding FolderName}" FontSize="14"/>
+                                                <CheckBox IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}" Margin="0,0,10,0"/>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding FolderName}" FontSize="14">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="#E0E0E0"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsError}" Value="True">
+                                                                        <Setter Property="Foreground" Value="#FF6B6B"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <TextBlock Text="{Binding FullPath}" FontSize="11" Foreground="#999"/>
+                                                </StackPanel>
                                             </StackPanel>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>

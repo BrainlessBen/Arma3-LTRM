@@ -29,6 +29,12 @@ namespace Arma_3_LTRM.Services
             _launchParameters.PropertyChanged += (s, e) => OnParametersChanged();
         }
 
+        public LaunchParametersManager(LaunchParameters savedParameters)
+        {
+            _launchParameters = savedParameters ?? new LaunchParameters();
+            _launchParameters.PropertyChanged += (s, e) => OnParametersChanged();
+        }
+
         public ObservableCollection<string> GetAvailableProfiles()
         {
             var profiles = new ObservableCollection<string>();
@@ -171,9 +177,11 @@ namespace Arma_3_LTRM.Services
                 }
             }
 
-            foreach (var modPath in _modPaths)
+            // Combine all mod paths into a single -mod= parameter with semicolon separation
+            if (_modPaths.Count > 0)
             {
-                parameters.Add($"-mod=\"{modPath}\"");
+                var modParam = string.Join(";", _modPaths);
+                parameters.Add($"-mod={modParam}");
             }
 
             return string.Join(Environment.NewLine, parameters);

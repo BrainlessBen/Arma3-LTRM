@@ -50,6 +50,12 @@ namespace Arma_3_LTRM.Services
                             Settings.BaseDownloadLocations = new List<string>();
                         }
                         
+                        // Ensure LaunchParameters is never null
+                        if (Settings.LaunchParameters == null)
+                        {
+                            Settings.LaunchParameters = new LaunchParameters();
+                        }
+                        
                         // Migration: Convert old single BaseDownloadLocation to new list format
                         if (Settings.BaseDownloadLocations.Count == 0)
                         {
@@ -71,6 +77,13 @@ namespace Arma_3_LTRM.Services
                             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Downloads") 
                         };
                     }
+                    
+                    // Ensure LaunchParameters is initialized
+                    if (Settings.LaunchParameters == null)
+                    {
+                        Settings.LaunchParameters = new LaunchParameters();
+                    }
+                    
                     SaveSettings();
                 }
             }

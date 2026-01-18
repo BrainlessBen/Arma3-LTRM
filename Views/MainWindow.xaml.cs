@@ -35,8 +35,12 @@ namespace Arma_3_LTRM.Views
             _serverManager = new ServerManager();
             _settingsManager = new SettingsManager();
             _ftpManager = new FtpManager();
-            _launchParametersManager = new LaunchParametersManager();
-            _launchParametersManager.ParametersChanged += (s, e) => UpdateParametersDisplay();
+            _launchParametersManager = new LaunchParametersManager(_settingsManager.Settings.LaunchParameters);
+            _launchParametersManager.ParametersChanged += (s, e) => 
+            {
+                UpdateParametersDisplay();
+                SaveLaunchParameters();
+            };
             _downloadLocations = new ObservableCollection<string>();
 
             LoadData();
@@ -70,6 +74,12 @@ namespace Arma_3_LTRM.Views
             }
             
             SettingsDownloadLocationsListBox.ItemsSource = _downloadLocations;
+        }
+
+        private void SaveLaunchParameters()
+        {
+            _settingsManager.Settings.LaunchParameters = _launchParametersManager.LaunchParameters;
+            _settingsManager.SaveSettings();
         }
 
         private void InitializeParametersUI()

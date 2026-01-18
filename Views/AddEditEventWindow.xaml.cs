@@ -122,18 +122,23 @@ namespace Arma_3_LTRM.Views
             
             foreach (var dlc in dlcs)
             {
-                // Check if already in event
-                bool isChecked = Event.ModFolders.Any(mf => 
+                // Don't add items that are already in the event - they'll show in the Selected Items list
+                // But always show error items
+                bool isAlreadyInEvent = !dlc.IsError && Event.ModFolders.Any(mf => 
                     mf.ItemType == ModItemType.DLC && 
                     mf.FolderPath.Equals(dlc.FolderName, StringComparison.OrdinalIgnoreCase));
 
-                _dlcItems.Add(new DlcDisplayItem
+                if (!isAlreadyInEvent)
                 {
-                    Name = dlc.Name,
-                    FolderName = dlc.FolderName,
-                    KeyFileName = dlc.KeyFileName,
-                    IsChecked = isChecked
-                });
+                    _dlcItems.Add(new DlcDisplayItem
+                    {
+                        Name = dlc.Name,
+                        FolderName = dlc.FolderName,
+                        KeyFileName = dlc.KeyFileName,
+                        IsChecked = false,
+                        IsError = dlc.IsError
+                    });
+                }
             }
         }
 
@@ -144,17 +149,22 @@ namespace Arma_3_LTRM.Views
             
             foreach (var item in workshopItems)
             {
-                // Check if already in event
-                bool isChecked = Event.ModFolders.Any(mf => 
+                // Don't add items that are already in the event - they'll show in the Selected Items list
+                // But always show error items
+                bool isAlreadyInEvent = !item.IsError && Event.ModFolders.Any(mf => 
                     mf.ItemType == ModItemType.Workshop && 
                     mf.FolderPath.Equals(item.FolderName, StringComparison.OrdinalIgnoreCase));
 
-                _workshopItems.Add(new WorkshopDisplayItem
+                if (!isAlreadyInEvent)
                 {
-                    FolderName = item.FolderName,
-                    FullPath = item.FullPath,
-                    IsChecked = isChecked
-                });
+                    _workshopItems.Add(new WorkshopDisplayItem
+                    {
+                        FolderName = item.FolderName,
+                        FullPath = item.FullPath,
+                        IsChecked = false,
+                        IsError = item.IsError
+                    });
+                }
             }
         }
 
@@ -515,6 +525,8 @@ namespace Arma_3_LTRM.Views
         public string Name { get; set; } = string.Empty;
         public string FolderName { get; set; } = string.Empty;
         public string KeyFileName { get; set; } = string.Empty;
+        public bool IsError { get; set; } = false;
+        public bool IsEnabled => !IsError;
         
         public bool IsChecked
         {
@@ -543,6 +555,8 @@ namespace Arma_3_LTRM.Views
 
         public string FolderName { get; set; } = string.Empty;
         public string FullPath { get; set; } = string.Empty;
+        public bool IsError { get; set; } = false;
+        public bool IsEnabled => !IsError;
         
         public bool IsChecked
         {
