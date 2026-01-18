@@ -1220,14 +1220,6 @@ namespace Arma_3_LTRM.Views
                 };
 
                 Process.Start(processInfo);
-
-                var message = $"Arma 3 launched with {modFolders.Count} mod(s)!";
-                if (checkedServer != null)
-                {
-                    message += $"\nConnecting to: {checkedServer.Name}";
-                }
-
-                MessageBox.Show(message, "Launch Successful", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
