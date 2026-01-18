@@ -2,6 +2,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Collections.ObjectModel;
+using System.Globalization;
+using System.Windows.Data;
 using Arma_3_LTRM.Models;
 using Arma_3_LTRM.Services;
 using EventManager = Arma_3_LTRM.Services.EventManager;
@@ -16,6 +18,7 @@ namespace Arma_3_LTRM.Views
     {
         private readonly RepositoryManager _repositoryManager;
         private readonly EventManager _eventManager;
+        private readonly ServerManager _serverManager;
         private readonly SettingsManager _settingsManager;
         private readonly FtpManager _ftpManager;
         private readonly LaunchParametersManager _launchParametersManager;
@@ -28,6 +31,7 @@ namespace Arma_3_LTRM.Views
             _repositoryManager = new RepositoryManager();
             _eventManager = new EventManager();
             _eventManager.Initialize(_repositoryManager);
+            _serverManager = new ServerManager();
             _settingsManager = new SettingsManager();
             _ftpManager = new FtpManager();
             _launchParametersManager = new LaunchParametersManager();
@@ -41,8 +45,10 @@ namespace Arma_3_LTRM.Views
         {
             RepositoriesListBox.ItemsSource = _repositoryManager.Repositories;
             EventsListBox.ItemsSource = _eventManager.Events;
+            ServersListBox.ItemsSource = _serverManager.Servers;
             ManageRepositoriesListBox.ItemsSource = _repositoryManager.Repositories;
             ManageEventsListBox.ItemsSource = _eventManager.Events;
+            ManageServersListBox.ItemsSource = _serverManager.Servers;
             LoadSettings();
         }
 
@@ -143,6 +149,23 @@ namespace Arma_3_LTRM.Views
             UpdateParametersDisplay();
         }
 
+        private void ServerCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.CheckBox checkBox && checkBox.IsChecked == true)
+            {
+                // Uncheck all other servers when one is checked
+                foreach (var server in _serverManager.Servers)
+                {
+                    if (server != checkBox.DataContext)
+                    {
+                        server.IsChecked = false;
+                    }
+                }
+            }
+            
+            UpdateParametersDisplay();
+        }
+
         private void UpdateParametersDisplay()
         {
             // Get mod folders from checked repositories and events
@@ -213,6 +236,26 @@ namespace Arma_3_LTRM.Views
             // Get custom parameters and generate final command
             var customParams = CustomParametersTextBox.Text;
             var finalParams = _launchParametersManager.GetParametersString(customParams);
+            
+            // Add server connection parameters if a server is selected
+            var checkedServer = _serverManager.Servers.FirstOrDefault(s => s.IsChecked);
+            if (checkedServer != null)
+            {
+                var serverParams = $"-connect={checkedServer.Address} -port={checkedServer.Port}";
+                if (!string.IsNullOrWhiteSpace(checkedServer.Password))
+                {
+                    serverParams += $" -password={checkedServer.Password}";
+                }
+                
+                if (string.IsNullOrWhiteSpace(finalParams))
+                {
+                    finalParams = serverParams;
+                }
+                else
+                {
+                    finalParams += Environment.NewLine + serverParams;
+                }
+            }
             
             FinalParametersTextBox.Text = string.IsNullOrWhiteSpace(finalParams) 
                 ? "(No parameters selected)" 
@@ -614,6 +657,7 @@ namespace Arma_3_LTRM.Views
                 if (editRepoWindow.ShowDialog() == true)
                 {
                     _repositoryManager.UpdateRepository(repo);
+                    UpdateParametersDisplay();
                 }
             }
         }
@@ -628,6 +672,7 @@ namespace Arma_3_LTRM.Views
                 if (result == MessageBoxResult.Yes)
                 {
                     _repositoryManager.RemoveRepository(repo);
+                    UpdateParametersDisplay();
                 }
             }
         }
@@ -695,6 +740,7 @@ namespace Arma_3_LTRM.Views
                 if (editEventWindow.ShowDialog() == true)
                 {
                     _eventManager.UpdateEvent(evt);
+                    UpdateParametersDisplay();
                 }
             }
         }
@@ -709,6 +755,46 @@ namespace Arma_3_LTRM.Views
                 if (result == MessageBoxResult.Yes)
                 {
                     _eventManager.RemoveEvent(evt);
+                    UpdateParametersDisplay();
+                }
+            }
+        }
+
+        private void AddServer_Click(object sender, RoutedEventArgs e)
+        {
+            var addServerWindow = new AddEditServerWindow();
+            addServerWindow.Owner = this;
+            if (addServerWindow.ShowDialog() == true && addServerWindow.Server != null)
+            {
+                _serverManager.AddServer(addServerWindow.Server);
+            }
+        }
+
+        private void EditServer_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is Server server)
+            {
+                var editServerWindow = new AddEditServerWindow(server);
+                editServerWindow.Owner = this;
+                if (editServerWindow.ShowDialog() == true)
+                {
+                    _serverManager.UpdateServer(server);
+                    UpdateParametersDisplay();
+                }
+            }
+        }
+
+        private void DeleteServer_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is Server server)
+            {
+                var result = MessageBox.Show($"Are you sure you want to delete server '{server.Name}'?", 
+                    "Confirm Delete", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                
+                if (result == MessageBoxResult.Yes)
+                {
+                    _serverManager.RemoveServer(server);
+                    UpdateParametersDisplay();
                 }
             }
         }
@@ -822,6 +908,17 @@ namespace Arma_3_LTRM.Views
                 var customParams = CustomParametersTextBox.Text;
                 var arguments = _launchParametersManager.GetParametersString(customParams).Replace(Environment.NewLine, " ");
 
+                // Add server connection parameters if a server is selected
+                var checkedServer = _serverManager.Servers.FirstOrDefault(s => s.IsChecked);
+                if (checkedServer != null)
+                {
+                    arguments += $" -connect={checkedServer.Address} -port={checkedServer.Port}";
+                    if (!string.IsNullOrWhiteSpace(checkedServer.Password))
+                    {
+                        arguments += $" -password={checkedServer.Password}";
+                    }
+                }
+
                 var processInfo = new ProcessStartInfo
                 {
                     FileName = _settingsManager.Settings.Arma3ExePath,
@@ -831,8 +928,13 @@ namespace Arma_3_LTRM.Views
 
                 Process.Start(processInfo);
 
-                MessageBox.Show($"Arma 3 launched with {modFolders.Count} mod(s)!", 
-                    "Launch Successful", MessageBoxButton.OK, MessageBoxImage.Information);
+                var message = $"Arma 3 launched with {modFolders.Count} mod(s)!";
+                if (checkedServer != null)
+                {
+                    message += $"\nConnecting to: {checkedServer.Name}";
+                }
+
+                MessageBox.Show(message, "Launch Successful", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
@@ -897,6 +999,17 @@ namespace Arma_3_LTRM.Views
                 var modParams = string.Join(";", modFolders);
                 var arguments = $"-mod={modParams}";
 
+                // Add server connection parameters if a server is selected
+                var checkedServer = _serverManager.Servers.FirstOrDefault(s => s.IsChecked);
+                if (checkedServer != null)
+                {
+                    arguments += $" -connect={checkedServer.Address} -port={checkedServer.Port}";
+                    if (!string.IsNullOrWhiteSpace(checkedServer.Password))
+                    {
+                        arguments += $" -password={checkedServer.Password}";
+                    }
+                }
+
                 var processInfo = new ProcessStartInfo
                 {
                     FileName = _settingsManager.Settings.Arma3ExePath,
@@ -906,8 +1019,13 @@ namespace Arma_3_LTRM.Views
 
                 Process.Start(processInfo);
 
-                MessageBox.Show($"Arma 3 launched with {modFolders.Count} mod(s)!", 
-                    "Launch Successful", MessageBoxButton.OK, MessageBoxImage.Information);
+                var message = $"Arma 3 launched with {modFolders.Count} mod(s)!";
+                if (checkedServer != null)
+                {
+                    message += $"\nConnecting to: {checkedServer.Name}";
+                }
+
+                MessageBox.Show(message, "Launch Successful", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
@@ -916,4 +1034,22 @@ namespace Arma_3_LTRM.Views
             }
         }
     }
+
+    public class PasswordMaskConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is string password && !string.IsNullOrEmpty(password))
+            {
+                return new string('?', password.Length);
+            }
+            return "(none)";
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
 }
+
