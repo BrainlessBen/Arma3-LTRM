@@ -130,6 +130,165 @@ Background="#1E1E1E">
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- TextBox Style -->
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#2D2D30"/>
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="BorderBrush" Value="#3F3F46"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="CaretBrush" Value="#E0E0E0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="border"
+                              Background="{TemplateBinding Background}"
+                              BorderBrush="{TemplateBinding BorderBrush}"
+                              BorderThickness="{TemplateBinding BorderThickness}"
+                              CornerRadius="3"
+                              SnapsToDevicePixels="True">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                        Focusable="false"
+                                        HorizontalScrollBarVisibility="Hidden"
+                                        VerticalScrollBarVisibility="Hidden"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#0E639C"/>
+                            </Trigger>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#0E639C"/>
+                            </Trigger>
+                            <Trigger Property="IsReadOnly" Value="True">
+                                <Setter Property="Background" Value="#1E1E1E"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Background" Value="#252526"/>
+                                <Setter Property="Foreground" Value="#808080"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- CheckBox Style -->
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <StackPanel Orientation="Horizontal">
+                            <Border x:Name="checkBoxBorder"
+                                  Width="18"
+                                  Height="18"
+                                  Background="#2D2D30"
+                                  BorderBrush="#3F3F46"
+                                  BorderThickness="1"
+                                  CornerRadius="3"
+                                  VerticalAlignment="Center">
+                                <Path x:Name="checkMark"
+                                    Width="12"
+                                    Height="12"
+                                    Data="M 0 6 L 4 10 L 10 0"
+                                    Stroke="#E0E0E0"
+                                    StrokeThickness="2"
+                                    Visibility="Collapsed"
+                                    Stretch="Uniform"/>
+                            </Border>
+                            <ContentPresenter Margin="8,0,0,0"
+                                            VerticalAlignment="Center"
+                                            RecognizesAccessKey="True"/>
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="checkMark" Property="Visibility" Value="Visible"/>
+                                <Setter TargetName="checkBoxBorder" Property="Background" Value="#0E639C"/>
+                                <Setter TargetName="checkBoxBorder" Property="BorderBrush" Value="#0E639C"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="checkBoxBorder" Property="BorderBrush" Value="#0E639C"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#808080"/>
+                                <Setter TargetName="checkBoxBorder" Property="Background" Value="#252526"/>
+                                <Setter TargetName="checkBoxBorder" Property="BorderBrush" Value="#3F3F46"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ScrollViewer Style -->
+        <Style TargetType="ScrollViewer">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollViewer">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <ScrollContentPresenter Grid.Column="0" Grid.Row="0"/>
+                            <ScrollBar x:Name="PART_VerticalScrollBar"
+                                     Grid.Column="1"
+                                     Grid.Row="0"
+                                     Value="{TemplateBinding VerticalOffset}"
+                                     Maximum="{TemplateBinding ScrollableHeight}"
+                                     ViewportSize="{TemplateBinding ViewportHeight}"
+                                     Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}"/>
+                            <ScrollBar x:Name="PART_HorizontalScrollBar"
+                                     Grid.Column="0"
+                                     Grid.Row="1"
+                                     Orientation="Horizontal"
+                                     Value="{TemplateBinding HorizontalOffset}"
+                                     Maximum="{TemplateBinding ScrollableWidth}"
+                                     ViewportSize="{TemplateBinding ViewportWidth}"
+                                     Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ScrollBar Style -->
+        <Style TargetType="ScrollBar">
+            <Setter Property="Background" Value="#1E1E1E"/>
+            <Setter Property="Foreground" Value="#3F3F46"/>
+            <Setter Property="Width" Value="12"/>
+            <Style.Triggers>
+                <Trigger Property="Orientation" Value="Horizontal">
+                    <Setter Property="Width" Value="Auto"/>
+                    <Setter Property="Height" Value="12"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Menu Style -->
+        <Style TargetType="Menu">
+            <Setter Property="Background" Value="#2D2D30"/>
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+        </Style>
+
+        <!-- MenuItem Style -->
+        <Style TargetType="MenuItem">
+            <Setter Property="Background" Value="#2D2D30"/>
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Style.Triggers>
+                <Trigger Property="IsHighlighted" Value="True">
+                    <Setter Property="Background" Value="#3E3E42"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
         
         <Style TargetType="TabControl">
             <Setter Property="Background" Value="#1E1E1E"/>
@@ -628,8 +787,6 @@ Background="#1E1E1E">
                                 <StackPanel Margin="10,0,0,15">
                                     <CheckBox x:Name="UseNameCheckBox" 
                                               Content="Name (for client):" 
-                                              Foreground="#E0E0E0" 
-                                              FontSize="14" 
                                               Margin="0,0,0,5"/>
                                     <ComboBox x:Name="NameComboBox"
                                               IsEnabled="{Binding IsChecked, ElementName=UseNameCheckBox}"
@@ -637,20 +794,13 @@ Background="#1E1E1E">
 
                                     <CheckBox x:Name="UseProfileCheckBox" 
                                               Content="Profile (for server):" 
-                                              Foreground="#E0E0E0" 
-                                              FontSize="14" 
                                               Margin="0,0,0,5"/>
                                     <ComboBox x:Name="ProfileComboBox"
                                               IsEnabled="{Binding IsChecked, ElementName=UseProfileCheckBox}"
                                               Margin="0,0,0,10"/>
 
                                     <TextBlock Text="Unit:" Margin="0,0,0,5"/>
-                                    <TextBox x:Name="UnitTextBox"
-                                             Background="#2D2D30" 
-                                             Foreground="#E0E0E0" 
-                                             BorderBrush="#3F3F46"
-                                             Padding="8"
-                                             FontSize="14"/>
+                                    <TextBox x:Name="UnitTextBox"/>
                                 </StackPanel>
 
                                 <!-- Mission -->
@@ -658,15 +808,8 @@ Background="#1E1E1E">
                                 <StackPanel Margin="10,0,0,15">
                                     <CheckBox x:Name="UseMissionCheckBox" 
                                               Content="Use Mission" 
-                                              Foreground="#E0E0E0" 
-                                              FontSize="14" 
                                               Margin="0,0,0,5"/>
                                     <TextBox x:Name="MissionPathTextBox"
-                                             Background="#2D2D30" 
-                                             Foreground="#E0E0E0" 
-                                             BorderBrush="#3F3F46"
-                                             Padding="8"
-                                             FontSize="14"
                                              IsEnabled="{Binding IsChecked, ElementName=UseMissionCheckBox}"
                                              Margin="0,0,0,5"/>
                                     <Button Content="Browse..." 
@@ -681,11 +824,6 @@ Background="#1E1E1E">
                                 <StackPanel Margin="10,0,0,15">
                                     <TextBlock Text="Config:" Margin="0,0,0,5"/>
                                     <TextBox x:Name="ConfigTextBox"
-                                             Background="#2D2D30" 
-                                             Foreground="#E0E0E0" 
-                                             BorderBrush="#3F3F46"
-                                             Padding="8"
-                                             FontSize="14"
                                              Margin="0,0,0,5"/>
                                     <Button Content="Browse..." 
                                             Style="{StaticResource ActionButton}"
@@ -695,11 +833,6 @@ Background="#1E1E1E">
 
                                     <TextBlock Text="BattlEye Path:" Margin="0,0,0,5"/>
                                     <TextBox x:Name="BePathTextBox"
-                                             Background="#2D2D30" 
-                                             Foreground="#E0E0E0" 
-                                             BorderBrush="#3F3F46"
-                                             Padding="8"
-                                             FontSize="14"
                                              Margin="0,0,0,5"/>
                                     <Button Content="Browse..." 
                                             Style="{StaticResource ActionButton}"
@@ -715,63 +848,39 @@ Background="#1E1E1E">
                                 <StackPanel Margin="10,0,0,15">
                                     <CheckBox x:Name="NoSplashCheckBox" 
                                             Content="No Splash" 
-                                            Foreground="#E0E0E0" 
-                                            FontSize="14" 
                                             Margin="0,0,0,5"/>
                                     <CheckBox x:Name="SkipIntroCheckBox" 
                                             Content="Skip Intro" 
-                                            Foreground="#E0E0E0" 
-                                            FontSize="14" 
                                             Margin="0,0,0,5"/>
                                     <CheckBox x:Name="EmptyWorldCheckBox" 
                                             Content="Empty World" 
-                                            Foreground="#E0E0E0" 
-                                            FontSize="14" 
                                             Margin="0,0,0,5"/>
                                     <CheckBox x:Name="EnableHTCheckBox" 
                                             Content="Enable HyperThreading" 
-                                            Foreground="#E0E0E0" 
-                                            FontSize="14" 
                                             Margin="0,0,0,5"/>
                                     <CheckBox x:Name="WindowedCheckBox" 
                                             Content="Windowed (with no border)" 
-                                            Foreground="#E0E0E0" 
-                                            FontSize="14" 
                                             Margin="0,0,0,5"/>
                                     <CheckBox x:Name="ShowScriptErrorsCheckBox" 
                                               Content="Show Script Errors" 
-                                              Foreground="#E0E0E0" 
-                                              FontSize="14" 
                                               Margin="0,0,0,5"/>
                                     <CheckBox x:Name="NoPauseCheckBox" 
                                               Content="No Pause" 
-                                              Foreground="#E0E0E0" 
-                                              FontSize="14" 
                                               Margin="0,0,0,5"/>
                                     <CheckBox x:Name="NoPauseAudioCheckBox" 
                                               Content="No Pause Audio" 
-                                              Foreground="#E0E0E0" 
-                                              FontSize="14" 
                                               Margin="0,0,0,5"/>
                                     <CheckBox x:Name="NoLogsCheckBox" 
                                               Content="No Logs" 
-                                              Foreground="#E0E0E0" 
-                                              FontSize="14" 
                                               Margin="0,0,0,5"/>
                                     <CheckBox x:Name="NoFreezeCheckCheckBox" 
                                               Content="No Freeze Check" 
-                                              Foreground="#E0E0E0" 
-                                              FontSize="14" 
                                               Margin="0,0,0,5"/>
                                     <CheckBox x:Name="NoFilePatchingCheckBox" 
                                               Content="No File Patching" 
-                                              Foreground="#E0E0E0" 
-                                              FontSize="14" 
                                               Margin="0,0,0,5"/>
                                     <CheckBox x:Name="DebugCheckBox" 
                                               Content="Debug" 
-                                              Foreground="#E0E0E0" 
-                                              FontSize="14" 
                                               Margin="0,0,0,5"/>
                                 </StackPanel>
                             </StackPanel>
@@ -787,11 +896,6 @@ Background="#1E1E1E">
                                          AcceptsReturn="True"
                                          TextWrapping="Wrap"
                                          VerticalScrollBarVisibility="Auto"
-                                         Background="#2D2D30" 
-                                         Foreground="#E0E0E0" 
-                                         BorderBrush="#3F3F46" 
-                                         Padding="8" 
-                                         FontSize="14"
                                          FontFamily="Consolas"
                                          Margin="0,0,0,20"
                                          TextChanged="CustomParametersTextBox_TextChanged"/>
@@ -804,10 +908,7 @@ Background="#1E1E1E">
                                          IsReadOnly="True"
                                          TextWrapping="Wrap"
                                          VerticalScrollBarVisibility="Auto"
-                                         Background="#2D2D30" 
                                          Foreground="#4EC9B0" 
-                                         BorderBrush="#3F3F46"
-                                         Padding="10" 
                                          FontSize="11" 
                                          FontFamily="Consolas"
                                          MinHeight="200"/>
@@ -837,8 +938,7 @@ Background="#1E1E1E">
                                 <ColumnDefinition Width="10"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBox x:Name="SettingsArma3PathTextBox" Grid.Column="0" IsReadOnly="True"
-                                     Background="#2D2D30" Foreground="#E0E0E0" BorderBrush="#3F3F46" Padding="8" FontSize="14"/>
+                            <TextBox x:Name="SettingsArma3PathTextBox" Grid.Column="0" IsReadOnly="True"/>
                             <Button x:Name="SettingsBrowseArma3Button" Grid.Column="2" Content="Browse..." 
                                     Style="{StaticResource ActionButton}" Click="SettingsBrowseArma3_Click"/>
                         </Grid>
@@ -859,8 +959,7 @@ Background="#1E1E1E">
                             </Grid.RowDefinitions>
 
                             <ListBox x:Name="SettingsDownloadLocationsListBox" Grid.Column="0" Grid.Row="0" 
-                                     Height="120" SelectionMode="Single"
-                                     Background="#2D2D30" Foreground="#E0E0E0" BorderBrush="#3F3F46"/>
+                                     Height="120" SelectionMode="Single"/>
 
                             <StackPanel Grid.Column="2" Grid.Row="0" VerticalAlignment="Center">
                                 <Button x:Name="SettingsAddLocationButton" Content="Add..." Width="100" 
